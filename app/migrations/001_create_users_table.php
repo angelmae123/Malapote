@@ -43,9 +43,14 @@ class Create_users_table {
                 ],
                 'role' => [
                     'type'       => 'ENUM',
-                    'constraint' => "'admin','moderator','user'",
+                    'constraint' => "'super_admin','admin','section_admin','customer'",
                     'null'       => FALSE,
-                    'default'    => 'user',
+                    'default'    => 'customer',
+                ],
+                'section' => [
+                    'type'       => 'ENUM',
+                    'constraint' => "'farm','mill','sales','office'",
+                    'null'       => TRUE,
                 ],
                 'is_active' => [
                     'type'       => 'TINYINT',
@@ -69,6 +74,7 @@ class Create_users_table {
             ->add_key('username', unique: TRUE, name: 'username_unique')
             ->add_key('email', name: 'email_idx')
             ->add_key('role', name: 'role_idx')
+            ->add_key('section', unique: TRUE, name: 'section_admin_unique')
             ->create_table('users');
     }
 

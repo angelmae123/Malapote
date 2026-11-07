@@ -543,9 +543,12 @@ class Api
     protected function scopes_for_role($role)
     {
         $role_scopes = [
-            'admin'  => ['read', 'write', 'delete'],
-            'editor' => ['read', 'write'],
-            'user'   => ['read'],
+            'super_admin'   => ['read', 'write', 'delete'],
+            'section_admin' => ['read', 'write'],
+            'customer'      => ['read'],
+            'admin'         => ['read', 'write', 'delete'],
+            'editor'        => ['read', 'write'],
+            'user'          => ['read'],
         ];
 
         return $role_scopes[$role] ?? ['read'];
@@ -601,7 +604,7 @@ class Api
     {
         $user_id = $user_data['id'];
         $now     = time();
-        $scopes  = $user_data['scopes'] ?? ['read'];
+        $scopes  = $user_data['scopes'] ?? $this->scopes_for_role($user_data['role'] ?? 'customer');
 
         $access_payload = [
             'sub'    => $user_id,
