@@ -37,7 +37,12 @@ export default function CustomerLoginPage() {
         !data.tokens?.access_token ||
         !data.tokens?.refresh_token
       ) {
-        throw new Error("The server returned an incomplete login response.");
+        const detail =
+          (typeof data === "object" && data !== null && data.error) ||
+          (typeof data === "object" && data !== null && data.message) ||
+          "The server returned an incomplete login response.";
+
+        throw new Error(detail);
       }
 
       if (data.user.role !== "customer") {

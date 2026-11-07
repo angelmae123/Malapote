@@ -2,6 +2,20 @@ const allowedRoots = new Set(["auth", "farm", "mill", "office", "sales", "season
 const singleSegmentRoots = new Set(["seasons", "shipping-rates"]);
 const allowedMethods = ["GET", "POST", "PUT", "DELETE"];
 
+function getBackendBaseUrl() {
+  const configuredUrl = process.env.BACKEND_API_URL;
+
+  if (configuredUrl && configuredUrl.trim()) {
+    return new URL(configuredUrl);
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return new URL("http://127.0.0.1:3000");
+  }
+
+  throw new Error("BACKEND_API_URL is not configured for this deployment.");
+}
+
 async function forwardRequest(request, context) {
   const { path } = await context.params;
 
@@ -16,15 +30,20 @@ async function forwardRequest(request, context) {
 
   let baseUrl;
   try {
-    baseUrl = new URL(
-      process.env.BACKEND_API_URL || "http://127.0.0.1:3000",
-    );
+    baseUrl = getBackendBaseUrl();
     if (!["http:", "https:"].includes(baseUrl.protocol)) {
       throw new Error("The backend API URL must use HTTP or HTTPS.");
     }
   } catch (error) {
     console.error("Invalid backend API URL:", error);
-    return Response.json({ error: "Backend API URL is not configured correctly." }, { status: 500 });
+    return Response.json(
+      {
+        error: process.env.NODE_ENV === "production"
+          ? "The app is missing BACKEND_API_URL. Set it to your PHP API domain in Vercel."
+          : "Backend API URL is not configured correctly.",
+      },
+      { status: 500 }
+    );
   }
 
   const backendUrl = new URL(
