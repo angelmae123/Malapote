@@ -67,7 +67,7 @@ export default function CustomerLoginPage() {
     <main className="flex min-h-dvh w-full bg-white text-slate-800">
       <div className="relative hidden min-h-dvh w-1/2 flex-col justify-between overflow-hidden border-r border-blue-950/20 bg-blue-900 p-12 text-white lg:flex">
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-96 w-96 rounded-full bg-blue-800 opacity-50 blur-3xl" />
-        <div className="pointer-events-none absolute right-[-5rem] top-1/3 h-80 w-80 rounded-full bg-blue-950 opacity-60 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 top-1/3 h-80 w-80 rounded-full bg-blue-950 opacity-60 blur-3xl" />
 
         <div className="z-10 flex items-center justify-between">
           <Link href="/shop/home" className="flex items-center space-x-3">

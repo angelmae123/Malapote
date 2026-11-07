@@ -100,7 +100,7 @@ function OrderItems({ value }) {
   }
 
   return (
-    <div className="min-w-[220px] space-y-3">
+    <div className="min-w-55 space-y-3">
       {items.map((item, index) => {
         const details = getItemDescription(item);
 
@@ -536,7 +536,7 @@ export default function Orders() {
                           {order.order_code || "—"}
                         </td>
 
-                        <td className="min-w-[200px] px-5 py-4">
+                        <td className="min-w-50 px-5 py-4">
                           <p className="font-semibold text-slate-800">
                             {order.customer_name || "—"}
                           </p>
@@ -548,7 +548,7 @@ export default function Orders() {
                           </p>
                         </td>
 
-                        <td className="max-w-[230px] px-5 py-4 text-slate-600">
+                        <td className="max-w-57.5 px-5 py-4 text-slate-600">
                           <p className="font-medium text-slate-800">
                             {[order.barangay, order.municipality]
                               .filter(Boolean)
@@ -567,7 +567,7 @@ export default function Orders() {
                           {order.payment_method || "—"}
                         </td>
 
-                        <td className="min-w-[170px] px-5 py-4">
+                        <td className="min-w-42.5 px-5 py-4">
                           <select
                             value={selectedPaymentStatus}
                             onChange={(event) =>
@@ -609,7 +609,7 @@ export default function Orders() {
                           </span>
                         </td>
 
-                        <td className="min-w-[190px] px-5 py-4">
+                        <td className="min-w-47.5 px-5 py-4">
                           <div className="space-y-2">
                             <select
                               value={selectedStatus}
