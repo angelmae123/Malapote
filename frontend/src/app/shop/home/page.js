@@ -307,6 +307,7 @@ export default function ShopHomePage() {
   const [products, setProducts] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -370,6 +371,7 @@ export default function ShopHomePage() {
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
+    setError("");
 
     try {
       const catalog = await fetchProducts();
@@ -377,6 +379,9 @@ export default function ShopHomePage() {
       setProducts(catalog);
       updateProductQuantities(catalog);
     } catch (requestError) {
+      setError(
+        requestError.message || "Unable to load rice products."
+      );
       toast.error(
         requestError.message || "Unable to load rice products."
       );
@@ -392,11 +397,15 @@ export default function ShopHomePage() {
       .then((catalog) => {
         if (!cancelled) {
           setProducts(catalog);
+          setError("");
           updateProductQuantities(catalog);
         }
       })
       .catch((requestError) => {
         if (!cancelled) {
+          setError(
+            requestError.message || "Unable to load rice products."
+          );
           toast.error(
             requestError.message || "Unable to load rice products."
           );
