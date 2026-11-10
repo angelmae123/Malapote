@@ -43,6 +43,8 @@ NEXT_PUBLIC_BACKEND_ORIGIN=https://api.yourdomain.com
 
 `BACKEND_API_URL` is used by the server-side API proxy, while `NEXT_PUBLIC_BACKEND_ORIGIN` is used for product image URLs rendered in the browser. For separate frontend deployments instead of one deployment with two custom domains, set `PORTAL=shop` on the shop deployment and `PORTAL=admin` on the admin deployment. Replace the example hosts with your actual domains and redeploy after setting environment variables. On local development, the root page defaults to the customer landing page; the admin landing page is available at `/admin`, and staff sign-in is available at `/login`.
 
+Palay prediction also requires the PHP backend deployment to have the PHP cURL extension enabled and `PALAY_ML_API_URL` set to the FastAPI prediction URL, including `/predict`, reachable from the backend (prefer the hosting platform's private service network). The local fallback `http://127.0.0.1:8001/predict` only works when the ML service runs on the same machine as the PHP backend; a separately deployed backend must use its deployed ML service URL. Do not expose the ML service publicly without adding appropriate access controls.
+
 The customer portal does not link to staff sign-in, and the staff portal does not link to customer sign-in. These separate pages are for clarity, not access control: keep authorization checks enabled on the API and dashboard routes, and use HTTPS and strong credentials in production.
 
 ## Dashboard modules

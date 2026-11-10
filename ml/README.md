@@ -79,4 +79,7 @@ Open:
 
 The API returns both tonnes and kilograms. It does not save predictions as
 actual harvest records. Keep it bound to `127.0.0.1`; do not expose it directly
-to the public internet.
+to the public internet. In production, set the PHP backend's
+`PALAY_ML_API_URL` to this service's `/predict` endpoint on a private network
+reachable by the backend. The local `127.0.0.1` address is only valid when both
+services run on the same machine.

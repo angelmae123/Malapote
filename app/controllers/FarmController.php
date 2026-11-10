@@ -155,6 +155,18 @@ public function palay_prediction()
     $ml_url = getenv('PALAY_ML_API_URL');
 
     if (!$ml_url) {
+        if (getenv('APP_ENV') === 'production') {
+            log_message(
+                'error',
+                'Palay ML prediction failed: PALAY_ML_API_URL is not configured.'
+            );
+
+            $this->api->respond_error(
+                'The Palay prediction service is not configured. Set PALAY_ML_API_URL to the deployed ML API /predict endpoint.',
+                503
+            );
+        }
+
         $ml_url = 'http://127.0.0.1:8001/predict';
     }
 
