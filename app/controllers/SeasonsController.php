@@ -22,6 +22,7 @@ class SeasonsController extends Controller
     public function index()
     {
         try {
+            $this->synchronize_seasons();
             $seasons = $this->SeasonsModel->all();
 
             $this->api->respond([

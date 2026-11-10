@@ -21,6 +21,8 @@ The Next.js route handler proxies requests through the same origin, so the brows
 
 The PHP API must have `JWT_SECRET` and `REFRESH_TOKEN_KEY` configured. Public registration creates a customer account; only administrator accounts can enter the dashboard. Create or promote administrator accounts through the server-side account provisioning process.
 
+In production, point `BACKEND_API_URL` to the deployed PHP API and configure its `DB_*` environment variables to use the persistent database containing your application records. The API creates the current and next two years of wet and dry seasons the first time seasons are requested; other records are not seeded automatically.
+
 ## Separate shop and admin domains
 
 The root landing page is selected by hostname, so the two domains open different portals without a shared chooser:
