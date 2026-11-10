@@ -261,6 +261,28 @@ public function palay_prediction()
         );
     }
 
+    if (
+        !isset(
+            $ml_response['prediction_tonnes'],
+            $ml_response['prediction_kg']
+        ) ||
+        !is_numeric($ml_response['prediction_tonnes']) ||
+        !is_numeric($ml_response['prediction_kg']) ||
+        !is_finite((float) $ml_response['prediction_tonnes']) ||
+        !is_finite((float) $ml_response['prediction_kg'])
+    ) {
+        log_message(
+            'error',
+            'Palay ML service returned an unexpected response schema. Keys: ' .
+            implode(', ', array_keys($ml_response))
+        );
+
+        $this->api->respond_error(
+            'The configured PALAY_ML_API_URL did not return a prediction. Set it to the deployed ML API /predict endpoint and redeploy the backend.',
+            502
+        );
+    }
+
     // Include planting details and fertilizer totals.
     $ml_response['planting_cycle'] = [
         'farm_planting_harvesting_id' => $cycle_id,

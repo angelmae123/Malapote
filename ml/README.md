@@ -83,3 +83,19 @@ to the public internet. In production, set the PHP backend's
 `PALAY_ML_API_URL` to this service's `/predict` endpoint on a private network
 reachable by the backend. The local `127.0.0.1` address is only valid when both
 services run on the same machine.
+
+## Deploy on Render
+
+The repository's root `render.yaml` defines a separate Python web service for
+this API. In Render, create a Blueprint Instance for the repository and deploy
+the `agristock-palay-ml` service. Wait for its `/health` check to pass and
+confirm `model_loaded` is `true`.
+
+Then set the PHP backend's `PALAY_ML_API_URL` environment variable to the
+deployed service's `/predict` URL, for example
+`https://agristock-palay-ml.onrender.com/predict`, and redeploy the PHP backend.
+Use the ML service's private URL instead if both services support private
+networking. Do not set this variable to the service root or `/health`: those
+return status information, not a prediction. A Render free web service may
+sleep between requests, so its cold start can exceed the PHP backend's current
+30-second prediction timeout.

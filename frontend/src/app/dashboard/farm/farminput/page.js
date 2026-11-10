@@ -103,10 +103,16 @@ function getPredictionObject(response) {
       return null;
     }
 
-    if (
-      current.prediction_tonnes !== undefined ||
-      current.prediction_kg !== undefined
-    ) {
+    const hasPredictionTonnes =
+      current.prediction_tonnes !== undefined &&
+      current.prediction_tonnes !== null &&
+      Number.isFinite(Number(current.prediction_tonnes));
+    const hasPredictionKg =
+      current.prediction_kg !== undefined &&
+      current.prediction_kg !== null &&
+      Number.isFinite(Number(current.prediction_kg));
+
+    if (hasPredictionTonnes && hasPredictionKg) {
       return current;
     }
 
