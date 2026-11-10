@@ -18,25 +18,28 @@ class SeasonsController extends Controller
      * GET /api/seasons
      * Synchronize seasons and retrieve all records.
      */
+
     public function index()
     {
         try {
-            $this->synchronize_seasons();
-
             $seasons = $this->SeasonsModel->all();
 
             $this->api->respond([
                 'success' => true,
                 'message' => 'Seasons retrieved successfully.',
-                'data' => $seasons
+                'data' => $seasons ?: []
             ], 200);
+
         } catch (Throwable $e) {
+            error_log('[SeasonsController::index] ' . $e->getMessage());
+
             $this->api->respond_error(
-                'Unable to synchronize seasons: ' . $e->getMessage(),
+                'Unable to retrieve seasons. Please check the server error log.',
                 500
             );
         }
     }
+
 
     /**
      * GET /api/seasons/sync

@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const EMPTY_FORM = {
   mill_inventory_id: "",
@@ -132,9 +132,6 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -151,7 +148,6 @@ export default function ProductsPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    setError("");
 
     try {
       const [productResponse, inventoryResponse] = await Promise.all([
@@ -162,7 +158,7 @@ export default function ProductsPage() {
       setProducts(getResponseData(productResponse));
       setInventories(getResponseData(inventoryResponse));
     } catch (err) {
-      setError(err.message || "Unable to load products and inventory.");
+      toast.error(err.message || "Unable to load products and inventory.");
     } finally {
       setLoading(false);
     }
@@ -284,13 +280,13 @@ export default function ProductsPage() {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      setError("Only JPG, PNG, and WEBP images are allowed.");
+      toast.error("Only JPG, PNG, and WEBP images are allowed.");
       event.target.value = "";
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setError("Image size must not exceed 5 MB.");
+      toast.error("Image size must not exceed 5 MB.");
       event.target.value = "";
       return;
     }
@@ -299,7 +295,7 @@ export default function ProductsPage() {
       URL.revokeObjectURL(imagePreview);
     }
 
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setSelectedImage(file);
     setImagePreview(URL.createObjectURL(file));
     setRemoveImage(false);
@@ -319,14 +315,14 @@ export default function ProductsPage() {
     setEditingProduct(null);
     setForm(EMPTY_FORM);
     resetImage();
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
   }
 
   function openAddModal() {
     setEditingProduct(null);
     setForm(EMPTY_FORM);
     resetImage();
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setModalOpen(true);
   }
 
@@ -348,7 +344,7 @@ export default function ProductsPage() {
       setImagePreview(getImageUrl(product.image));
     }
 
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setModalOpen(true);
   }
 
@@ -367,17 +363,17 @@ export default function ProductsPage() {
     event.preventDefault();
 
     if (!form.product_name.trim()) {
-      setError("Product name is required.");
+      toast.error("Product name is required.");
       return;
     }
 
     if (!form.mill_inventory_id || !selectedInventory) {
-      setError("Please select a valid Mill Inventory record.");
+      toast.error("Please select a valid Mill Inventory record.");
       return;
     }
 
     if (getInventoryStock(selectedInventory) <= 0) {
-      setError("The selected inventory has no available stock.");
+      toast.error("The selected inventory has no available stock.");
       return;
     }
 
@@ -386,13 +382,11 @@ export default function ProductsPage() {
       !Number.isFinite(Number(form.price)) ||
       Number(form.price) < 0
     ) {
-      setError("Please enter a valid selling price.");
+      toast.error("Please enter a valid selling price.");
       return;
     }
 
     setSaving(true);
-    setError("");
-    setNotice("");
 
     const formData = new FormData();
 
@@ -402,11 +396,6 @@ export default function ProductsPage() {
     formData.append("price", form.price);
     formData.append("description", form.description.trim());
     formData.append("status", form.status);
-
-    // Sack quantity, sack weight, and stock quantity
-    // are NOT submitted.
-    // All are retrieved from the linked Mill Inventory.
-
     formData.append(
       "image",
       editingProduct?.image && !removeImage ? editingProduct.image : ""
@@ -428,7 +417,7 @@ export default function ProductsPage() {
           body: formData,
         });
 
-        setNotice("Product updated successfully.");
+        toast.success("Product updated successfully.");
       } else {
         await apiRequest("sales/products", {
           method: "POST",
@@ -436,7 +425,7 @@ export default function ProductsPage() {
           body: formData,
         });
 
-        setNotice("Product added successfully.");
+        toast.success("Product added successfully.");
       }
 
       setModalOpen(false);
@@ -446,7 +435,7 @@ export default function ProductsPage() {
 
       await loadData();
     } catch (err) {
-      setError(err.message || "Unable to save product.");
+      toast.error(err.message || "Unable to save product.");
     } finally {
       setSaving(false);
     }
@@ -463,19 +452,16 @@ export default function ProductsPage() {
 
     if (!confirmed) return;
 
-    setError("");
-    setNotice("");
-
     try {
       await apiRequest(`sales/products/${product.id}`, {
         method: "DELETE",
         token,
       });
 
-      setNotice("Product deleted successfully.");
+      toast.success("Product deleted successfully.");
       await loadData();
     } catch (err) {
-      setError(err.message || "Unable to delete product.");
+      toast.error(err.message || "Unable to delete product.");
     }
   }
 
@@ -512,20 +498,6 @@ export default function ProductsPage() {
             + Add Product
           </button>
         </header>
-
-        {/* ALERTS */}
-
-        {error && !modalOpen && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {notice && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {notice}
-          </div>
-        )}
 
         {/* SUMMARY */}
 
@@ -598,7 +570,7 @@ export default function ProductsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
+            <table className="w-full min-w-275 text-left text-sm">
 
               <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
@@ -663,7 +635,7 @@ export default function ProductsPage() {
                           </p>
 
                           {product.description && (
-                            <p className="mt-1 max-w-[200px] truncate text-xs text-slate-500">
+                            <p className="mt-1 max-w-50 truncate text-xs text-slate-500">
                               {product.description}
                             </p>
                           )}
@@ -778,7 +750,7 @@ export default function ProductsPage() {
       {/* ADD / EDIT PRODUCT MODAL */}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
 
           <div className="flex max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
 

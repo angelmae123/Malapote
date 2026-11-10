@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { toast } from "react-toastify";
 import { apiRequest } from "../../../lib/api";
 import ShopLogoutButton from "../ShopLogoutButton";
 import {
@@ -306,8 +307,6 @@ export default function ShopHomePage() {
   const [products, setProducts] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [cartNotice, setCartNotice] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -371,7 +370,6 @@ export default function ShopHomePage() {
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
-    setError("");
 
     try {
       const catalog = await fetchProducts();
@@ -379,7 +377,7 @@ export default function ShopHomePage() {
       setProducts(catalog);
       updateProductQuantities(catalog);
     } catch (requestError) {
-      setError(
+      toast.error(
         requestError.message || "Unable to load rice products."
       );
     } finally {
@@ -399,7 +397,7 @@ export default function ShopHomePage() {
       })
       .catch((requestError) => {
         if (!cancelled) {
-          setError(
+          toast.error(
             requestError.message || "Unable to load rice products."
           );
         }
@@ -421,7 +419,7 @@ export default function ShopHomePage() {
         setCartCount(getCartItemCount(readCart()));
       } catch (cartError) {
         console.error("Unable to read shopping cart:", cartError);
-        setCartNotice("Unable to read your saved cart.");
+        toast.error("Unable to read your saved cart.");
       }
     }
 
@@ -462,7 +460,6 @@ export default function ShopHomePage() {
 
     setSelectedGroup(group);
     setSelectedProductId(String(firstAvailable.id));
-    setCartNotice("");
   };
 
   const handleAddToCart = useCallback(
@@ -471,7 +468,7 @@ export default function ShopHomePage() {
         const rawQuantity = quantities[String(product.id)];
 
         if (rawQuantity === "" || rawQuantity === undefined) {
-          setCartNotice("Please enter a quantity.");
+          toast.error("Please enter a quantity.");
           return;
         }
 
@@ -483,7 +480,7 @@ export default function ShopHomePage() {
           selectedQuantity < 1 ||
           selectedQuantity > stock
         ) {
-          setCartNotice(
+          toast.error(
             `Please enter a valid quantity. Available stock: ${formatNumber(stock)} ${isLooseRice(product) ? "kg" : "sacks"}.`
           );
 
@@ -502,7 +499,7 @@ export default function ShopHomePage() {
 
         const unit = isLooseRice(product) ? "kg" : "sack";
 
-        setCartNotice(
+        toast.success(
           `${formatNumber(selectedQuantity)} ${unit}${selectedQuantity > 1 ? "s" : ""} of ${getVarietyName(product)} added to your cart.`
         );
 
@@ -516,7 +513,7 @@ export default function ShopHomePage() {
           cartError
         );
 
-        setCartNotice(
+        toast.error(
           cartError.message || "Unable to add product to your cart."
         );
       }
@@ -705,24 +702,6 @@ export default function ShopHomePage() {
             Welcome! Find your favorite rice products.
           </p>
         </section>
-
-        {/* CART NOTICE */}
-        {cartNotice && (
-          <div
-            className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
-            role="status"
-          >
-            <span>{cartNotice}</span>
-
-            <button
-              type="button"
-              onClick={() => setCartNotice("")}
-              className="shrink-0 font-bold text-blue-700 hover:text-blue-900"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
 
         {/* HERO */}
         <section className="relative isolate mb-5 overflow-hidden rounded-[24px] bg-gradient-to-r from-[#2149aa] via-[#285dd5] to-[#316cf5] px-7 py-9 text-white shadow-sm sm:min-h-[300px] sm:px-12 sm:py-11">

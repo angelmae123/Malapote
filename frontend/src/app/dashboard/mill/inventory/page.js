@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import {toast} from "react-toastify";
 import {
   getLowStockInfo,
   LOW_STOCK_THRESHOLDS,
@@ -109,7 +110,6 @@ export default function MillInventory() {
   const loadRecords = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
 
       const response = await apiRequest("mill/inventory", {
         token,
@@ -117,7 +117,7 @@ export default function MillInventory() {
 
       setRecords(getResponseData(response));
     } catch (err) {
-      setError(err?.message || "Failed to load mill inventory.");
+      toast.error(err?.message || "Failed to load mill inventory.");
     } finally {
       setLoading(false);
     }
@@ -502,7 +502,7 @@ export default function MillInventory() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
+              <table className="w-full min-w-225 text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-5 py-4 font-bold">Batch / Mill ID</th>

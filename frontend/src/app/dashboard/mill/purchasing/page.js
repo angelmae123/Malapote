@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100";
@@ -59,7 +59,7 @@ function Notice({ error, success }) {
 function Modal({ title, onClose, saving, children }) {
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4"
+      className="fixed inset-0 z-100 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4"
       onMouseDown={(e) =>
         e.target === e.currentTarget && !saving && onClose()
       }
@@ -127,15 +127,14 @@ export default function PalayPurchasing() {
   const load = useCallback(async () => {
     if (!token) {
       setLoading(false);
-      setError("Session expired. Please sign in again.");
+      toast.error("Session expired. Please sign in again.");
       return;
     }
 
     try {
-      setError("");
       setRecords(rows(await apiRequest("mill/purchasing", { token })));
     } catch (e) {
-      setError(e.message || "Unable to load purchase records.");
+      toast.error(e.message || "Unable to load purchase records.");
     } finally {
       setLoading(false);
     }
@@ -165,8 +164,8 @@ export default function PalayPurchasing() {
       ...blank,
       batch_code: code("PALAY"),
     });
-    setError("");
-    setSuccess("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.success("Action completed successfully.");
     setModal(true);
   };
 
@@ -187,8 +186,8 @@ export default function PalayPurchasing() {
       status: r.status || "Pending",
     });
 
-    setError("");
-    setSuccess("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.success("Action completed successfully.");
     setModal(true);
   };
 
@@ -201,7 +200,7 @@ export default function PalayPurchasing() {
 
   async function submit(e) {
     e.preventDefault();
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
 
     const q = Number(form.quantity_kg);
     const p = Number(form.price_per_kg);
@@ -211,7 +210,7 @@ export default function PalayPurchasing() {
       !form.variety.trim() ||
       !form.supplier_name.trim()
     ) {
-      setError(
+      toast.error(
         "Batch code, rice variety, and supplier name are required."
       );
       return;
@@ -223,7 +222,7 @@ export default function PalayPurchasing() {
       !Number.isFinite(p) ||
       p < 0
     ) {
-      setError(
+      toast.error(
         "Quantity must be greater than zero and price cannot be negative."
       );
       return;
@@ -255,7 +254,7 @@ export default function PalayPurchasing() {
         }
       );
 
-      setSuccess(
+      toast.success(
         editing !== null
           ? "Purchase record updated."
           : "Purchase record added."
@@ -266,7 +265,7 @@ export default function PalayPurchasing() {
 
       await load();
     } catch (e) {
-      setError(e.message || "Unable to save purchase record.");
+      toast.error(e.message || "Unable to save purchase record.");
     } finally {
       setSaving(false);
     }
@@ -278,17 +277,17 @@ export default function PalayPurchasing() {
     }
 
     try {
-      setError("");
+      toast.error("Unable to process this request right now. Please try again.");
 
       await apiRequest(`mill/purchasing/${r.id}`, {
         method: "DELETE",
         token,
       });
 
-      setSuccess("Purchase record deleted.");
+      toast.success("Purchase record deleted.");
       await load();
     } catch (e) {
-      setError(
+      toast.error(
         e.message ||
           "Unable to delete purchase. It may already be linked to drying."
       );
@@ -342,7 +341,7 @@ export default function PalayPurchasing() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[950px] text-left text-sm">
+            <table className="w-full min-w-237.5 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
                   {[

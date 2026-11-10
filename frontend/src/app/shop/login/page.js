@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../providers";
 import { apiRequest } from "../../../lib/api";
+import { toast } from "react-toastify";
 
 export default function CustomerLoginPage() {
   const router = useRouter();
   const { saveSession } = useAuth();
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   function handleChange(event) {
@@ -20,7 +20,6 @@ export default function CustomerLoginPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
@@ -46,7 +45,7 @@ export default function CustomerLoginPage() {
       }
 
       if (data.user.role !== "customer") {
-        setError("This account is not a customer account. Please use your customer credentials.");
+        toast.error("This account is not a customer account. Please use your customer credentials.");
         return;
       }
 
@@ -57,7 +56,7 @@ export default function CustomerLoginPage() {
       });
       router.replace("/shop/home");
     } catch (requestError) {
-      setError(requestError.message || "Unable to sign in. Please try again.");
+      toast.error(requestError.message || "Unable to sign in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -106,12 +105,6 @@ export default function CustomerLoginPage() {
             <h2 className="font-serif text-3xl font-semibold text-slate-900">Welcome back.</h2>
             <p className="mt-1 text-sm text-slate-500">Sign in to continue shopping.</p>
           </div>
-
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700" role="alert">
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

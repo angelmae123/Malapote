@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 import SeasonHistoryFilters from "../../../../components/dashboard/SeasonHistoryFilters";
 import {
   getHistoryYears,
@@ -14,13 +14,31 @@ const initialForm = {
   record_code: "",
   season: "",
   field_name: "",
+  area_hectares: "",
   crop: "Palay",
+  rice_variety: "",
   method: "",
   planting_date: "",
   expected_harvest_date: "",
+  actual_harvest_date: "",
   harvested_yield: "0",
   status: "Planned",
 };
+
+// FIX: Added missing inputClass definition.
+const inputClass =
+  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-900 focus:bg-white focus:ring-2 focus:ring-blue-100";
+
+// Generate a code according to the current planting/harvesting status.
+// Planned and Growing records use PLANTING; Harvested records use HARVESTING.
+const getRecordCodePrefix = (status) =>
+  status === "Harvested" ? "HARVESTING" : "PLANTING";
+
+const generateRecordCode = (status) =>
+  `${getRecordCodePrefix(status)}-${new Date()
+    .toISOString()
+    .replace(/[-:TZ.]/g, "")
+    .slice(0, 14)}`;
 
 const statusOptions = [
   { value: "Planned", label: "Planned" },
@@ -35,6 +53,32 @@ function getResponseData(response) {
   return [];
 }
 
+function formatDate(date) {
+  if (!date) return "—";
+
+  const dateValue = String(date).slice(0, 10);
+  const parsedDate = new Date(`${dateValue}T00:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) return date;
+
+  return parsedDate.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatNumber(value) {
+  const number = Number(value || 0);
+
+  if (!Number.isFinite(number)) return "0";
+
+  return number.toLocaleString("en-PH", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 function getSeasonForDate(seasons, date) {
   if (!date) return null;
 
@@ -43,7 +87,12 @@ function getSeasonForDate(seasons, date) {
       const startDate = String(season.start_date || "").slice(0, 10);
       const endDate = String(season.end_date || "").slice(0, 10);
 
-      return startDate && endDate && date >= startDate && date <= endDate;
+      return (
+        startDate &&
+        endDate &&
+        date >= startDate &&
+        date <= endDate
+      );
     }) || null
   );
 }
@@ -65,38 +114,43 @@ function getSeasonLabel(season, date) {
         ? "Dry Season"
         : season.season_name;
 
-  return seasonYear ? `${seasonLabel} ${seasonYear}` : seasonLabel;
-}
-
-function formatDate(date) {
-  if (!date) return "—";
-
-  const parsedDate = new Date(`${date}T00:00:00`);
-
-  if (Number.isNaN(parsedDate.getTime())) return date;
-
-  return parsedDate.toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return seasonYear
+    ? `${seasonLabel} ${seasonYear}`
+    : seasonLabel;
 }
 
 function getStatusStyle(status) {
   switch (status) {
     case "Planned":
       return "bg-amber-50 text-amber-700";
+
     case "Growing":
       return "bg-blue-50 text-blue-700";
+
     case "Harvested":
       return "bg-green-50 text-green-700";
+
     default:
       return "bg-slate-100 text-slate-600";
   }
 }
 
+function FormField({ label, required, children }) {
+  return (
+    <div>
+      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700">
+        {label}
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </label>
+
+      {children}
+    </div>
+  );
+}
+
 export default function PlantingHarvesting() {
   const { session } = useAuth();
+  const token = session?.accessToken;
 
   const [records, setRecords] = useState([]);
   const [seasons, setSeasons] = useState([]);
@@ -105,17 +159,12 @@ export default function PlantingHarvesting() {
   const [historyType, setHistoryType] = useState("all");
   const [historyYear, setHistoryYear] = useState("all");
 
-  const [formData, setFormData] = useState(initialForm);
+  const [formData, setFormData] = useState({ ...initialForm });
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const token = session?.accessToken;
 
   const selectedSeason = getSeasonForDate(
     seasons,
@@ -129,20 +178,28 @@ export default function PlantingHarvesting() {
   };
 
   const filteredRecords = records.filter((record) =>
-    matchesSeasonHistory(record, seasons, historyFilters, "season")
+    matchesSeasonHistory(
+      record,
+      seasons,
+      historyFilters,
+      "season"
+    )
   );
 
-  const historyYears = getHistoryYears(records, seasons, "season");
+  const historyYears = getHistoryYears(
+    records,
+    seasons,
+    "season"
+  );
 
   const loadData = useCallback(async () => {
     if (!token) {
       setLoading(false);
-      setError("Your session has expired. Please sign in again.");
+      toast.error("Your session has expired. Please sign in again.");
       return;
     }
 
     setLoading(true);
-    setError("");
 
     try {
       const [recordResponse, seasonResponse] = await Promise.all([
@@ -153,7 +210,7 @@ export default function PlantingHarvesting() {
       setRecords(getResponseData(recordResponse));
       setSeasons(getResponseData(seasonResponse));
     } catch (requestError) {
-      setError(
+      toast.error(
         requestError.message ||
           "Unable to load planting and harvesting records."
       );
@@ -164,54 +221,98 @@ export default function PlantingHarvesting() {
 
   useEffect(() => {
     const timer = window.setTimeout(loadData, 0);
+
     return () => window.clearTimeout(timer);
   }, [loadData]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-      ...(name === "planting_date"
-        ? {
-            season: getSeasonLabel(
-              getSeasonForDate(seasons, value),
-              value
-            ),
-          }
-        : {}),
-    }));
+    setFormData((previous) => {
+      const updated = {
+        ...previous,
+        [name]: value,
+      };
+
+      if (name === "planting_date") {
+        updated.season = getSeasonLabel(
+          getSeasonForDate(seasons, value),
+          value
+        );
+      }
+
+      if (name === "status") {
+        // Change the code prefix when the record changes between
+        // a planting record (Planned/Growing) and a harvesting record.
+        if (previous.status !== value) {
+          updated.record_code = generateRecordCode(value);
+        }
+
+        if (value !== "Harvested") {
+          updated.actual_harvest_date = "";
+          updated.harvested_yield = "0";
+        }
+      }
+
+      return updated;
+    });
   };
 
   const resetForm = () => {
-    setFormData(initialForm);
+    setFormData({ ...initialForm });
     setEditingId(null);
     setShowForm(false);
-    setError("");
   };
 
   const handleAdd = () => {
-    setFormData(initialForm);
+    const newForm = { ...initialForm };
+    newForm.record_code = generateRecordCode(newForm.status);
+
+    setFormData(newForm);
     setEditingId(null);
-    setError("");
-    setSuccess("");
     setShowForm(true);
   };
 
   const handleEdit = (record) => {
-    setError("");
-    setSuccess("");
+    const expectedPrefix = getRecordCodePrefix(record.status);
+    const currentCode = String(record.record_code || "");
+    const currentPrefix = currentCode.split("-")[0];
+    const recordCode =
+      currentCode && currentPrefix === expectedPrefix
+        ? currentCode
+        : generateRecordCode(record.status);
 
     setFormData({
-      record_code: record.record_code ?? "",
+      record_code: recordCode,
       season: record.season ?? "",
       field_name: record.field_name ?? "",
+
+      area_hectares:
+        record.area_hectares !== null &&
+        record.area_hectares !== undefined
+          ? String(record.area_hectares)
+          : "",
+
       crop: record.crop ?? "Palay",
+      rice_variety: record.rice_variety ?? "",
       method: record.method ?? "",
-      planting_date: record.planting_date ?? "",
-      expected_harvest_date: record.expected_harvest_date ?? "",
-      harvested_yield: String(record.harvested_yield ?? "0"),
+
+      planting_date: String(
+        record.planting_date || ""
+      ).slice(0, 10),
+
+      expected_harvest_date: String(
+        record.expected_harvest_date || ""
+      ).slice(0, 10),
+
+      actual_harvest_date: String(
+        record.actual_harvest_date || ""
+      ).slice(0, 10),
+
+      harvested_yield: String(
+        record.harvested_yield ?? "0"
+      ),
+
       status: record.status ?? "Planned",
     });
 
@@ -219,38 +320,62 @@ export default function PlantingHarvesting() {
     setShowForm(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    setError("");
-    setSuccess("");
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     if (!token) {
-      setError("Your session has expired. Please sign in again.");
+      toast.error("Your session has expired. Please sign in again.");
       return;
     }
 
-    if (
-      !formData.planting_date ||
-      !selectedSeason ||
-      !formData.field_name.trim() ||
-      !formData.crop.trim() ||
-      !formData.status
-    ) {
-      setError(
-        !formData.planting_date
-          ? "Select a planting date to determine the season automatically."
-          : !selectedSeason
-            ? "No season covers the selected planting date. Check the season date ranges in your database."
-            : "Please complete all required fields."
+    if (!formData.planting_date) {
+      toast.error("Please select a planting date.");
+      return;
+    }
+
+    if (!selectedSeason) {
+      toast.error(
+        "No season covers the selected planting date. Check the season date ranges in your database."
       );
+      return;
+    }
+
+    if (!formData.field_name.trim()) {
+      toast.error("Please enter the field name.");
+      return;
+    }
+
+    const area = Number(formData.area_hectares);
+
+    if (!Number.isFinite(area) || area <= 0) {
+      toast.error(
+        "Please enter a valid area greater than zero hectares."
+      );
+      return;
+    }
+
+    if (!formData.crop.trim()) {
+      toast.error("Please enter the crop.");
+      return;
+    }
+
+    if (!formData.rice_variety.trim()) {
+      toast.error("Please enter the rice variety.");
+      return;
+    }
+
+    if (!formData.status) {
+      toast.error("Please select a planting status.");
       return;
     }
 
     const harvestedYield = Number(formData.harvested_yield);
 
-    if (!Number.isFinite(harvestedYield) || harvestedYield < 0) {
-      setError("Please enter a valid harvested yield.");
+    if (
+      !Number.isFinite(harvestedYield) ||
+      harvestedYield < 0
+    ) {
+      toast.error("Please enter a valid harvested yield.");
       return;
     }
 
@@ -258,21 +383,71 @@ export default function PlantingHarvesting() {
       formData.expected_harvest_date &&
       formData.expected_harvest_date < formData.planting_date
     ) {
-      setError(
+      toast.error(
         "Expected harvest date cannot be earlier than planting date."
+      );
+      return;
+    }
+
+    if (
+      formData.actual_harvest_date &&
+      formData.actual_harvest_date < formData.planting_date
+    ) {
+      toast.error(
+        "Actual harvest date cannot be earlier than planting date."
+      );
+      return;
+    }
+
+    if (
+      formData.status === "Harvested" &&
+      !formData.actual_harvest_date
+    ) {
+      toast.error(
+        "Please enter the actual harvest date for harvested records."
+      );
+      return;
+    }
+
+    if (
+      formData.status === "Harvested" &&
+      harvestedYield <= 0
+    ) {
+      toast.error(
+        "Harvested yield must be greater than zero."
       );
       return;
     }
 
     const payload = {
       record_code: formData.record_code.trim(),
-      season: getSeasonLabel(selectedSeason, formData.planting_date),
+
+      season: getSeasonLabel(
+        selectedSeason,
+        formData.planting_date
+      ),
+
       field_name: formData.field_name.trim(),
+      area_hectares: area,
       crop: formData.crop.trim(),
+      rice_variety: formData.rice_variety.trim(),
       method: formData.method.trim(),
-      planting_date: formData.planting_date || null,
-      expected_harvest_date: formData.expected_harvest_date || null,
-      harvested_yield: harvestedYield,
+
+      planting_date: formData.planting_date,
+
+      expected_harvest_date:
+        formData.expected_harvest_date || null,
+
+      actual_harvest_date:
+        formData.status === "Harvested"
+          ? formData.actual_harvest_date
+          : null,
+
+      harvested_yield:
+        formData.status === "Harvested"
+          ? harvestedYield
+          : 0,
+
       status: formData.status,
     };
 
@@ -289,7 +464,7 @@ export default function PlantingHarvesting() {
           }
         );
 
-        setSuccess(
+        toast.success(
           "Planting and harvesting record updated successfully."
         );
       } else {
@@ -299,7 +474,7 @@ export default function PlantingHarvesting() {
           body: payload,
         });
 
-        setSuccess(
+        toast.success(
           "Planting and harvesting record added successfully."
         );
       }
@@ -307,7 +482,7 @@ export default function PlantingHarvesting() {
       resetForm();
       await loadData();
     } catch (requestError) {
-      setError(
+      toast.error(
         requestError.message ||
           "Unable to save the planting and harvesting record."
       );
@@ -323,8 +498,10 @@ export default function PlantingHarvesting() {
 
     if (!confirmed) return;
 
-    setError("");
-    setSuccess("");
+    if (!token) {
+      toast.error("Your session has expired. Please sign in again.");
+      return;
+    }
 
     try {
       await apiRequest(
@@ -335,13 +512,13 @@ export default function PlantingHarvesting() {
         }
       );
 
-      setSuccess(
+      toast.success(
         "Planting and harvesting record deleted successfully."
       );
 
       await loadData();
     } catch (requestError) {
-      setError(
+      toast.error(
         requestError.message ||
           "Unable to delete the planting and harvesting record."
       );
@@ -352,7 +529,7 @@ export default function PlantingHarvesting() {
     <main className="min-h-screen bg-slate-50 p-4 text-slate-800 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
 
-        {/* Page Header */}
+        {/* PAGE HEADER */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">
@@ -377,25 +554,34 @@ export default function PlantingHarvesting() {
           </button>
         </div>
 
-        {/* Alerts */}
-        {error && !showForm && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {/* DATA COLLECTION INFORMATION */}
+        <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+          <div className="flex items-start gap-3">
+            <div className="text-xl">🌾</div>
 
-        {success && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {success}
-          </div>
-        )}
+            <div>
+              <h2 className="text-sm font-semibold text-blue-900">
+                Planting and Harvest Data
+              </h2>
 
-        {/* Add / Edit Modal */}
+              <p className="mt-1 text-sm leading-relaxed text-blue-800">
+                Record the planted area, rice variety, planting date,
+                and actual harvest results. These records will help
+                build historical data for future harvest prediction.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ADD / EDIT MODAL */}
         {showForm && (
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget && !saving) {
+            onMouseDown={(event) => {
+              if (
+                event.target === event.currentTarget &&
+                !saving
+              ) {
                 resetForm();
               }
             }}
@@ -406,7 +592,7 @@ export default function PlantingHarvesting() {
               aria-labelledby="planting-modal-title"
               className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
             >
-              {/* Modal Header */}
+              {/* MODAL HEADER */}
               <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
                 <div>
                   <p className="mb-1 text-xs font-bold uppercase tracking-widest text-blue-900">
@@ -438,238 +624,248 @@ export default function PlantingHarvesting() {
                 </button>
               </div>
 
-              {/* Modal Body */}
+              {/* MODAL BODY */}
               <div className="overflow-y-auto px-5 py-6 sm:px-7">
-                {error && (
-                  <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                    {error}
-                  </div>
-                )}
-
                 <form
                   id="planting-form"
                   onSubmit={handleSubmit}
                   className="space-y-5"
                 >
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {/* PLANTING INFORMATION */}
+                  <div>
+                    <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-blue-900">
+                      Planting Information
+                    </h3>
 
-                    {/* Record Code */}
-                    <div>
-                      <label
-                        htmlFor="record_code"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Record Code
-                      </label>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
 
-                      <input
-                        id="record_code"
-                        type="text"
-                        name="record_code"
-                        value={formData.record_code}
-                        onChange={handleChange}
-                        placeholder="Enter record code"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
-                      />
-                    </div>
-
-                    {/* Automatic Season */}
-                    <div>
-                      <label
-                        htmlFor="season"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Season{" "}
-                        <span className="text-xs font-medium normal-case tracking-normal text-slate-400">
-                          Automatic
-                        </span>
-                      </label>
-
-                      <output
-                        id="season"
-                        aria-live="polite"
-                        className={`flex min-h-12 w-full items-center rounded-xl border px-4 py-3 text-sm ${
-                          selectedSeason
-                            ? "border-blue-200 bg-blue-50 font-semibold text-blue-900"
-                            : "border-slate-200 bg-slate-50 text-slate-500"
-                        }`}
-                      >
-                        {selectedSeason
-                          ? getSeasonLabel(
-                              selectedSeason,
-                              formData.planting_date
-                            )
-                          : formData.planting_date
-                            ? seasons.length
-                              ? "No season covers this planting date"
-                              : "Season records are not available"
-                            : "Select planting date to determine season"}
-                      </output>
-
-                      {seasons.length === 0 && (
-                        <p className="mt-2 text-xs text-amber-700">
-                          No season records were returned. Check your seasons
-                          database and API.
+                      <FormField label="Record Code">
+                        <input
+                          type="text"
+                          name="record_code"
+                          value={formData.record_code}
+                          placeholder="Automatically generated"
+                          maxLength={50}
+                          disabled
+                          className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
+                        />
+                        <p className="mt-2 text-xs text-slate-400">
+                          Automatically generated: PLANTING for Planned/Growing
+                          and HARVESTING for Harvested records.
                         </p>
-                      )}
-                    </div>
+                      </FormField>
 
-                    {/* Field Name */}
-                    <div>
-                      <label
-                        htmlFor="field_name"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Field Name <span className="text-red-500">*</span>
-                      </label>
+                      <FormField label="Season (Automatic)">
+                        <output
+                          aria-live="polite"
+                          className={`flex min-h-12 w-full items-center rounded-xl border px-4 py-3 text-sm ${
+                            selectedSeason
+                              ? "border-blue-200 bg-blue-50 font-semibold text-blue-900"
+                              : "border-slate-200 bg-slate-50 text-slate-500"
+                          }`}
+                        >
+                          {selectedSeason
+                            ? getSeasonLabel(
+                                selectedSeason,
+                                formData.planting_date
+                              )
+                            : formData.planting_date
+                              ? seasons.length
+                                ? "No season covers this planting date"
+                                : "Season records are not available"
+                              : "Select planting date first"}
+                        </output>
 
-                      <input
-                        id="field_name"
-                        type="text"
-                        name="field_name"
-                        value={formData.field_name}
-                        onChange={handleChange}
-                        required
-                        placeholder="e.g. Field A"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
-                      />
-                    </div>
+                        {seasons.length === 0 && (
+                          <p className="mt-2 text-xs text-amber-700">
+                            No season records were returned. Check your
+                            seasons database and API.
+                          </p>
+                        )}
+                      </FormField>
 
-                    {/* Crop */}
-                    <div>
-                      <label
-                        htmlFor="crop"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Crop <span className="text-red-500">*</span>
-                      </label>
+                      <FormField label="Field Name" required>
+                        <input
+                          type="text"
+                          name="field_name"
+                          value={formData.field_name}
+                          onChange={handleChange}
+                          required
+                          maxLength={100}
+                          placeholder="e.g. Field A"
+                          className={inputClass}
+                        />
+                      </FormField>
 
-                      <input
-                        id="crop"
-                        type="text"
-                        name="crop"
-                        value={formData.crop}
-                        onChange={handleChange}
-                        required
-                        placeholder="e.g. Palay"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
-                      />
-                    </div>
+                      <FormField label="Area (Hectares)" required>
+                        <input
+                          type="number"
+                          name="area_hectares"
+                          value={formData.area_hectares}
+                          onChange={handleChange}
+                          min="0.01"
+                          max="99999999.99"
+                          step="0.01"
+                          required
+                          placeholder="e.g. 2.50"
+                          className={inputClass}
+                        />
 
-                    {/* Planting Method */}
-                    <div>
-                      <label
-                        htmlFor="method"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Planting Method
-                      </label>
+                        <p className="mt-2 text-xs text-slate-400">
+                          Enter the actual planted area in hectares.
+                        </p>
+                      </FormField>
 
-                      <input
-                        id="method"
-                        type="text"
-                        name="method"
-                        value={formData.method}
-                        onChange={handleChange}
-                        placeholder="e.g. Direct seeding, Transplanting"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
-                      />
-                    </div>
+                      <FormField label="Crop" required>
+                        <input
+                          type="text"
+                          name="crop"
+                          value={formData.crop}
+                          onChange={handleChange}
+                          required
+                          maxLength={100}
+                          placeholder="e.g. Palay"
+                          className={inputClass}
+                        />
+                      </FormField>
 
-                    {/* Status */}
-                    <div>
-                      <label
-                        htmlFor="status"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Status <span className="text-red-500">*</span>
-                      </label>
+                      <FormField label="Rice Variety" required>
+                        <input
+                          type="text"
+                          name="rice_variety"
+                          value={formData.rice_variety}
+                          onChange={handleChange}
+                          required
+                          maxLength={100}
+                          placeholder="e.g. NSIC Rc 222"
+                          className={inputClass}
+                        />
 
-                      <select
-                        id="status"
-                        name="status"
-                        value={formData.status}
-                        onChange={handleChange}
-                        required
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
-                      >
-                        {statusOptions.map((option) => (
-                          <option
-                            key={option.value}
-                            value={option.value}
-                          >
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                        <p className="mt-2 text-xs text-slate-400">
+                          Enter the exact rice variety planted in this field.
+                        </p>
+                      </FormField>
 
-                    {/* Planting Date */}
-                    <div>
-                      <label
-                        htmlFor="planting_date"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Planting Date{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
+                      <FormField label="Planting Method">
+                        <input
+                          type="text"
+                          name="method"
+                          value={formData.method}
+                          onChange={handleChange}
+                          maxLength={50}
+                          placeholder="e.g. Direct seeding, Transplanting"
+                          className={inputClass}
+                        />
+                      </FormField>
 
-                      <input
-                        id="planting_date"
-                        type="date"
-                        name="planting_date"
-                        value={formData.planting_date}
-                        onChange={handleChange}
-                        required
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
-                      />
-                    </div>
+                      <FormField label="Planting Date" required>
+                        <input
+                          type="date"
+                          name="planting_date"
+                          value={formData.planting_date}
+                          onChange={handleChange}
+                          required
+                          className={inputClass}
+                        />
+                      </FormField>
 
-                    {/* Expected Harvest */}
-                    <div>
-                      <label
-                        htmlFor="expected_harvest_date"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Expected Harvest Date
-                      </label>
+                      <FormField label="Expected Harvest Date">
+                        <input
+                          type="date"
+                          name="expected_harvest_date"
+                          value={formData.expected_harvest_date}
+                          onChange={handleChange}
+                          min={formData.planting_date || undefined}
+                          className={inputClass}
+                        />
+                      </FormField>
 
-                      <input
-                        id="expected_harvest_date"
-                        type="date"
-                        name="expected_harvest_date"
-                        value={formData.expected_harvest_date}
-                        onChange={handleChange}
-                        min={formData.planting_date || undefined}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
-                      />
-                    </div>
-
-                    {/* Harvested Yield */}
-                    <div>
-                      <label
-                        htmlFor="harvested_yield"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Harvested Yield (Tons)
-                      </label>
-
-                      <input
-                        id="harvested_yield"
-                        type="number"
-                        name="harvested_yield"
-                        min="0"
-                        step="0.01"
-                        value={formData.harvested_yield}
-                        onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
-                      />
+                      <FormField label="Status" required>
+                        <select
+                          name="status"
+                          value={formData.status}
+                          onChange={handleChange}
+                          required
+                          className={inputClass}
+                        >
+                          {statusOptions.map((option) => (
+                            <option
+                              key={option.value}
+                              value={option.value}
+                            >
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
                     </div>
                   </div>
+
+                  {/* HARVEST INFORMATION */}
+                  {formData.status === "Harvested" ? (
+                    <div className="rounded-2xl border border-green-200 bg-green-50/50 p-5">
+                      <div className="mb-4">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-green-800">
+                          Actual Harvest Information
+                        </h3>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Enter the actual harvest date and final
+                          harvested yield.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <FormField label="Actual Harvest Date" required>
+                          <input
+                            type="date"
+                            name="actual_harvest_date"
+                            value={formData.actual_harvest_date}
+                            onChange={handleChange}
+                            min={formData.planting_date || undefined}
+                            required
+                            className={inputClass}
+                          />
+                        </FormField>
+
+                        <FormField label="Harvested Yield (Tons)" required>
+                          <input
+                            type="number"
+                            name="harvested_yield"
+                            value={formData.harvested_yield}
+                            onChange={handleChange}
+                            min="0.01"
+                            max="99999999.99"
+                            step="0.01"
+                            required
+                            className={inputClass}
+                          />
+                        </FormField>
+                      </div>
+
+                      <p className="mt-4 text-xs leading-relaxed text-green-800">
+                        Only actual harvest results should be recorded
+                        here. These values will become part of the
+                        historical production data.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                      <p className="text-sm font-medium text-slate-700">
+                        Harvest details are not required yet.
+                      </p>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        Actual harvest date and harvested yield can be
+                        recorded when the planting status changes to
+                        Harvested.
+                      </p>
+                    </div>
+                  )}
                 </form>
               </div>
 
-              {/* Modal Footer */}
+              {/* MODAL FOOTER */}
               <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
                 <button
                   type="button"
@@ -697,7 +893,7 @@ export default function PlantingHarvesting() {
           </div>
         )}
 
-        {/* Records Table */}
+        {/* RECORDS TABLE */}
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-2 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
@@ -754,15 +950,17 @@ export default function PlantingHarvesting() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] text-left text-sm">
+              <table className="w-full min-w-[1500px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-5 py-4 font-bold">Code</th>
                     <th className="px-5 py-4 font-bold">Season</th>
                     <th className="px-5 py-4 font-bold">Field</th>
-                    <th className="px-5 py-4 font-bold">Crop</th>
+                    <th className="px-5 py-4 font-bold">Area (Ha)</th>
+                    <th className="px-5 py-4 font-bold">Rice Variety</th>
                     <th className="px-5 py-4 font-bold">Planting Date</th>
                     <th className="px-5 py-4 font-bold">Expected Harvest</th>
+                    <th className="px-5 py-4 font-bold">Actual Harvest</th>
                     <th className="px-5 py-4 font-bold">Yield (Tons)</th>
                     <th className="px-5 py-4 font-bold">Status</th>
                     <th className="px-5 py-4 text-right font-bold">
@@ -789,8 +987,21 @@ export default function PlantingHarvesting() {
                         {record.field_name || "—"}
                       </td>
 
-                      <td className="px-5 py-4 text-slate-600">
-                        {record.crop || "—"}
+                      <td className="whitespace-nowrap px-5 py-4 font-medium text-slate-800">
+                        {record.area_hectares !== null &&
+                        record.area_hectares !== undefined
+                          ? `${formatNumber(record.area_hectares)} ha`
+                          : "—"}
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className="font-semibold text-slate-800">
+                          {record.rice_variety || "—"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {record.crop || "Palay"}
+                        </p>
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-600">
@@ -801,8 +1012,12 @@ export default function PlantingHarvesting() {
                         {formatDate(record.expected_harvest_date)}
                       </td>
 
-                      <td className="px-5 py-4 font-semibold text-slate-800">
-                        {Number(record.harvested_yield || 0).toFixed(2)}
+                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                        {formatDate(record.actual_harvest_date)}
+                      </td>
+
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-slate-800">
+                        {formatNumber(record.harvested_yield)}
                       </td>
 
                       <td className="px-5 py-4">

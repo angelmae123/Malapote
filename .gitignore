@@ -24,3 +24,9 @@ runtime/*
 
 # OS
 Thumbs.db
+
+# Python virtual environment
+ml/.venv/
+ml/venv/
+__pycache__/
+*.pyc

@@ -4,29 +4,45 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "../../../lib/api";
+import { toast } from "react-toastify";
 
 export default function CustomerRegisterPage() {
   const router = useRouter();
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
+    contactNumber: "",
     password: "",
     confirmPassword: "",
   });
-  const [error, setError] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
-    setFormData((previous) => ({ ...previous, [name]: value }));
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    if (formData.contactNumber.trim() === "") {
+      toast.error("Please enter your contact number.");
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      toast.error("Password must be at least 8 characters.");
       return;
     }
 
@@ -38,17 +54,26 @@ export default function CustomerRegisterPage() {
         body: {
           username: formData.username.trim(),
           email: formData.email.trim(),
+          contact_number: formData.contactNumber.trim(),
           password: formData.password,
         },
       });
 
       if (data.user?.role !== "customer") {
-        throw new Error("The server did not create a customer account.");
+        throw new Error(
+          "The server did not create a customer account."
+        );
       }
+
+      toast.success(
+        "Registration successful! Please check your email for verification instructions."
+      );
 
       router.replace("/shop/login");
     } catch (requestError) {
-      setError(requestError.message || "Registration failed. Please try again.");
+      toast.error(
+        requestError.message || "Registration failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -56,57 +81,85 @@ export default function CustomerRegisterPage() {
 
   return (
     <main className="flex min-h-dvh w-full bg-white text-slate-800">
+      {/* Left Branding Section */}
       <div className="relative hidden min-h-dvh w-1/2 flex-col justify-between overflow-hidden border-r border-blue-950/20 bg-blue-900 p-12 text-white lg:flex">
         <div className="pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-blue-800 opacity-60 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-blue-950 opacity-70 blur-3xl" />
 
         <div className="z-10 flex items-center justify-between">
           <Link href="/shop/home" className="flex items-center space-x-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-lg font-bold text-blue-900 shadow-md">M</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-lg font-bold text-blue-900 shadow-md">
+              M
+            </span>
+
             <span>
-              <span className="block text-sm font-bold tracking-wide">Malapote</span>
-              <span className="text-xs uppercase tracking-wider text-blue-200">Rice marketplace</span>
+              <span className="block text-sm font-bold tracking-wide">
+                Malapote
+              </span>
+              <span className="text-xs uppercase tracking-wider text-blue-200">
+                Rice marketplace
+              </span>
             </span>
           </Link>
+
           <span className="rounded-full border border-blue-700/50 bg-blue-950/70 px-3.5 py-1.5 text-xs font-medium uppercase tracking-widest text-blue-100">
             Grown with care
           </span>
         </div>
 
         <div className="z-10 my-auto max-w-lg py-12">
-          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-blue-300">Join the Malapote shop</p>
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-blue-300">
+            Join the Malapote shop
+          </p>
+
           <h1 className="mb-6 font-serif text-5xl font-light leading-tight tracking-tight">
             Good rice for <br />
-            <span className="font-normal italic text-blue-100">every table.</span>
+            <span className="font-normal italic text-blue-100">
+              every table.
+            </span>
           </h1>
+
           <p className="text-base leading-relaxed text-blue-100/90">
-            Create your customer account to discover rice products and shop with Malapote Ricemill.
+            Create your customer account to discover rice products and shop
+            with Malapote Ricemill.
           </p>
         </div>
 
         <div className="z-10 flex items-center justify-between border-t border-blue-800/80 pt-6 text-xs text-blue-200/80">
           <p className="italic">Harvest today. Prosper tomorrow.</p>
-          <p className="font-mono text-[10px] uppercase tracking-widest">Malapote · Est. with purpose</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest">
+            Malapote · Est. with purpose
+          </p>
         </div>
       </div>
 
+      {/* Registration Form */}
       <div className="flex min-h-dvh w-full items-center justify-center overflow-y-auto bg-slate-50 p-3 sm:p-6 lg:w-1/2 lg:p-10">
         <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-xl sm:p-7">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">Create customer account</p>
-            <h2 className="font-serif text-3xl font-semibold text-slate-900">Get started.</h2>
-            <p className="mt-1 text-sm text-slate-500">Register to shop for your favorite rice.</p>
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">
+              Create customer account
+            </p>
+
+            <h2 className="font-serif text-3xl font-semibold text-slate-900">
+              Get started.
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Register to shop for your favorite rice.
+            </p>
           </div>
 
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600" role="alert">
-              {error}
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Username */}
             <div>
-              <label htmlFor="customer-username" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Username</label>
+              <label
+                htmlFor="customer-username"
+                className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700"
+              >
+                Username
+              </label>
+
               <input
                 id="customer-username"
                 name="username"
@@ -120,8 +173,16 @@ export default function CustomerRegisterPage() {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 transition placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-900"
               />
             </div>
+
+            {/* Email */}
             <div>
-              <label htmlFor="customer-register-email" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Email address</label>
+              <label
+                htmlFor="customer-register-email"
+                className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700"
+              >
+                Email address
+              </label>
+
               <input
                 id="customer-register-email"
                 name="email"
@@ -134,8 +195,44 @@ export default function CustomerRegisterPage() {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 transition placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-900"
               />
             </div>
+
+            {/* Contact Number */}
             <div>
-              <label htmlFor="customer-register-password" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Password</label>
+              <label
+                htmlFor="customer-contact-number"
+                className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700"
+              >
+                Contact Number
+              </label>
+
+              <input
+                id="customer-contact-number"
+                name="contactNumber"
+                type="tel"
+                autoComplete="tel"
+                inputMode="tel"
+                maxLength={20}
+                value={formData.contactNumber}
+                onChange={handleChange}
+                required
+                placeholder="e.g. 09XXXXXXXXX"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 transition placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-900"
+              />
+
+              <p className="mt-1 text-xs text-slate-400">
+                Enter your active mobile number for customer contact.
+              </p>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="customer-register-password"
+                className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700"
+              >
+                Password
+              </label>
+
               <input
                 id="customer-register-password"
                 name="password"
@@ -149,8 +246,16 @@ export default function CustomerRegisterPage() {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 transition placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-900"
               />
             </div>
+
+            {/* Confirm Password */}
             <div>
-              <label htmlFor="customer-confirm-password" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">Confirm password</label>
+              <label
+                htmlFor="customer-confirm-password"
+                className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700"
+              >
+                Confirm password
+              </label>
+
               <input
                 id="customer-confirm-password"
                 name="confirmPassword"
@@ -164,25 +269,48 @@ export default function CustomerRegisterPage() {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 transition placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-900"
               />
             </div>
+
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 flex w-full items-center justify-center space-x-2 rounded-xl bg-blue-900 px-4 py-3 font-semibold text-white shadow-lg shadow-blue-900/25 transition hover:bg-blue-800 active:bg-blue-950 disabled:opacity-50"
+              className="mt-1 flex w-full items-center justify-center space-x-2 rounded-xl bg-blue-900 px-4 py-3 font-semibold text-white shadow-lg shadow-blue-900/25 transition hover:bg-blue-800 active:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span>{loading ? "Creating account..." : "Register"}</span>
+              <span>
+                {loading ? "Creating account..." : "Register"}
+              </span>
+
               {!loading && (
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0-7 7m7-7H3" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M14 5l7 7m0 0-7 7m7-7H3"
+                  />
                 </svg>
               )}
             </button>
           </form>
 
+          {/* Footer */}
           <div className="space-y-3 border-t border-slate-100 pt-3 text-center">
             <p className="text-sm text-slate-600">
               Already have an account?{" "}
-              <Link href="/shop/login" className="font-semibold text-blue-900 underline underline-offset-4 hover:text-blue-800">Sign in</Link>
+              <Link
+                href="/shop/login"
+                className="font-semibold text-blue-900 underline underline-offset-4 hover:text-blue-800"
+              >
+                Sign in
+              </Link>
             </p>
+
             <p className="text-xs leading-relaxed text-slate-400">
               Customer registration is separate from staff access.
             </p>

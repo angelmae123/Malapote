@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const EMPTY_FORM = {
   name: "",
@@ -54,9 +55,6 @@ export default function FarmersWorkersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
 
@@ -66,7 +64,6 @@ export default function FarmersWorkersPage() {
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
-    setError("");
 
     try {
       const response = await apiRequest("office/farmers-workers", {
@@ -75,7 +72,7 @@ export default function FarmersWorkersPage() {
 
       setRecords(getResponseData(response));
     } catch (err) {
-      setError(err.message || "Unable to load farmers and workers.");
+      toast.error(err.message || "Unable to load farmers and workers.");
     } finally {
       setLoading(false);
     }
@@ -126,7 +123,7 @@ export default function FarmersWorkersPage() {
   function openAddModal() {
     setEditingRecord(null);
     setForm({ ...EMPTY_FORM });
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setModalOpen(true);
   }
 
@@ -140,7 +137,7 @@ export default function FarmersWorkersPage() {
       days_of_work: String(record.days_of_work ?? "0"),
     });
 
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setModalOpen(true);
   }
 
@@ -148,7 +145,7 @@ export default function FarmersWorkersPage() {
     setModalOpen(false);
     setEditingRecord(null);
     setForm({ ...EMPTY_FORM });
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
   }
 
   function handleChange(event) {
@@ -163,18 +160,15 @@ export default function FarmersWorkersPage() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    setError("");
-    setNotice("");
-
     if (!form.name.trim()) {
-      setError("Full name is required.");
+      toast.error("Full name is required.");
       return;
     }
 
     const days = Number(form.days_of_work);
 
     if (!Number.isFinite(days) || days < 0) {
-      setError("Days worked must be a valid non-negative number.");
+      toast.error("Days worked must be a valid non-negative number.");
       return;
     }
 
@@ -198,7 +192,7 @@ export default function FarmersWorkersPage() {
           }
         );
 
-        setNotice("Record updated successfully.");
+        toast.success("Record updated successfully.");
       } else {
         await apiRequest("office/farmers-workers", {
           method: "POST",
@@ -206,13 +200,13 @@ export default function FarmersWorkersPage() {
           body: payload,
         });
 
-        setNotice("Farmer / worker added successfully.");
+        toast.success("Farmer / worker added successfully.");
       }
 
       closeModal();
       await loadRecords();
     } catch (err) {
-      setError(err.message || "Unable to save record.");
+      toast.error(err.message || "Unable to save record.");
     } finally {
       setSaving(false);
     }
@@ -225,9 +219,6 @@ export default function FarmersWorkersPage() {
 
     if (!confirmed) return;
 
-    setError("");
-    setNotice("");
-
     try {
       await apiRequest(
         `office/farmers-workers/${record.id}`,
@@ -237,10 +228,10 @@ export default function FarmersWorkersPage() {
         }
       );
 
-      setNotice("Record deleted successfully.");
+      toast.success("Record deleted successfully.");
       await loadRecords();
     } catch (err) {
-      setError(err.message || "Unable to delete record.");
+      toast.error(err.message || "Unable to delete record.");
     }
   }
 
@@ -270,18 +261,6 @@ export default function FarmersWorkersPage() {
             + Add Farmer / Worker
           </button>
         </header>
-
-        {error && !modalOpen && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {notice && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {notice}
-          </div>
-        )}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
@@ -353,7 +332,7 @@ export default function FarmersWorkersPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-left text-sm">
+            <table className="w-full min-w-212.5 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-5 py-4">Name</th>
@@ -443,7 +422,7 @@ export default function FarmersWorkersPage() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
           <div className="flex max-h-[95vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
               <div>

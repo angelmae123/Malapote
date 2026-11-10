@@ -1,3 +1,4 @@
+
 <?php
 defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
@@ -18,7 +19,7 @@ class SeasonsModel extends Model
         'updated_at'
     ];
 
-    protected $guarded = [];
+    protected $guarded = ['season_id'];
 
     public function __construct()
     {

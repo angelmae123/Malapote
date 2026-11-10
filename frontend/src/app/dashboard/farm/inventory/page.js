@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 import SeasonSelect from "../../../../components/dashboard/SeasonSelect";
 import SeasonHistoryFilters from "../../../../components/dashboard/SeasonHistoryFilters";
 import {
@@ -91,12 +92,11 @@ export default function FarmInventory() {
   const loadData = useCallback(async () => {
     if (!token) {
       setLoading(false);
-      setError("Your session has expired. Please sign in again.");
+      toast.error("Your session has expired. Please sign in again.");
       return;
     }
 
     setLoading(true);
-    setError("");
 
     try {
       const [inventoryResponse, seasonResponse] = await Promise.all([
@@ -107,7 +107,7 @@ export default function FarmInventory() {
       setInventory(getResponseData(inventoryResponse));
       setSeasons(getResponseData(seasonResponse));
     } catch (requestError) {
-      setError(
+      toast.error(
         requestError.message || "Unable to load farm inventory records."
       );
     } finally {
@@ -133,19 +133,19 @@ export default function FarmInventory() {
     setFormData(initialForm);
     setEditingId(null);
     setShowForm(false);
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
   };
 
   const handleAdd = () => {
     setFormData(initialForm);
     setEditingId(null);
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setSuccess("");
     setShowForm(true);
   };
 
   const handleEdit = (record) => {
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setSuccess("");
 
     setFormData({
@@ -166,21 +166,21 @@ export default function FarmInventory() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setSuccess("");
 
     if (!token) {
-      setError("Your session has expired. Please sign in again.");
+      toast.error("Your session has expired. Please sign in again.");
       return;
     }
 
     if (!formData.season_id) {
-      setError("Please select a season.");
+      toast.error("Please select a season.");
       return;
     }
 
     if (!formData.item_category.trim() || !formData.item_name.trim()) {
-      setError("Please complete the required fields.");
+      toast.error("Please complete the required fields.");
       return;
     }
 
@@ -188,12 +188,12 @@ export default function FarmInventory() {
     const unitPrice = Number(formData.unit_price);
 
     if (!Number.isFinite(quantity) || quantity < 0) {
-      setError("Please enter a valid quantity.");
+      toast.error("Please enter a valid quantity.");
       return;
     }
 
     if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-      setError("Please enter a valid price per unit.");
+      toast.error("Please enter a valid price per unit.");
       return;
     }
 
@@ -233,7 +233,7 @@ export default function FarmInventory() {
       resetForm();
       await loadData();
     } catch (requestError) {
-      setError(
+      toast.error(
         requestError.message || "Unable to save the inventory item."
       );
     } finally {
@@ -248,7 +248,7 @@ export default function FarmInventory() {
 
     if (!confirmed) return;
 
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
     setSuccess("");
 
     try {
@@ -260,7 +260,7 @@ export default function FarmInventory() {
       setSuccess("Farm inventory item deleted successfully.");
       await loadData();
     } catch (requestError) {
-      setError(
+      toast.error(
         requestError.message || "Unable to delete the inventory item."
       );
     }
@@ -311,7 +311,7 @@ export default function FarmInventory() {
         {/* Add / Edit Modal */}
         {showForm && (
           <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-6"
+            className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-6"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget && !saving) {
                 resetForm();
@@ -638,7 +638,7 @@ export default function FarmInventory() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1050px] text-left text-sm">
+              <table className="w-full min-w-262.5 text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-5 py-4 font-bold">Item</th>

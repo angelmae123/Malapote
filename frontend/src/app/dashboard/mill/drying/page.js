@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100";
@@ -51,7 +52,7 @@ function Notice({ error, success }) {
 function Modal({ title, onClose, saving, children }) {
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4"
+      className="fixed inset-0 z-100 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4"
       onMouseDown={(e) =>
         e.target === e.currentTarget && !saving && onClose()
       }
@@ -119,13 +120,11 @@ export default function Drying() {
   const load = useCallback(async () => {
     if (!token) {
       setLoading(false);
-      setError("Session expired. Please sign in again.");
+      toast.error("Session expired. Please sign in again.");
       return;
     }
 
     try {
-      setError("");
-
       const [d, p] = await Promise.all([
         apiRequest("mill/drying", { token }),
         apiRequest("mill/purchasing", { token }),
@@ -134,7 +133,7 @@ export default function Drying() {
       setRecords(rows(d));
       setPurchases(rows(p));
     } catch (e) {
-      setError(
+      toast.error(
         e.message || "Unable to load drying and purchase records."
       );
     } finally {
@@ -163,8 +162,8 @@ export default function Drying() {
       ...blank,
       drying_id: code("DRY"),
     });
-    setError("");
-    setSuccess("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.success("Action completed successfully.");
     setModal(true);
   };
 
@@ -186,8 +185,8 @@ export default function Drying() {
       status: r.status || "In Progress",
     });
 
-    setError("");
-    setSuccess("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.success("Action completed successfully.");
     setModal(true);
   };
 
@@ -207,12 +206,12 @@ export default function Drying() {
 
   async function submit(e) {
     e.preventDefault();
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
 
     const dryingCost = Number(form.drying_cost || 0);
 
     if (!form.palay_purchasing_id) {
-      setError("Select a purchase record.");
+      toast.error("Select a purchase record.");
       return;
     }
 
@@ -223,14 +222,14 @@ export default function Drying() {
       final < 0 ||
       final > start
     ) {
-      setError(
+      toast.error(
         "Starting weight must be positive and final weight must be between zero and starting weight."
       );
       return;
     }
 
     if (!Number.isFinite(dryingCost) || dryingCost < 0) {
-      setError("Drying cost cannot be negative.");
+      toast.error("Drying cost cannot be negative.");
       return;
     }
 
@@ -239,12 +238,12 @@ export default function Drying() {
       form.start_date &&
       form.end_date < form.start_date
     ) {
-      setError("End date cannot be earlier than start date.");
+      toast.error("End date cannot be earlier than start date.");
       return;
     }
 
     if (form.status === "Completed" && final <= 0) {
-      setError("Enter the final dried weight before completing drying.");
+      toast.error("Enter the final dried weight before completing drying.");
       return;
     }
 
@@ -252,7 +251,7 @@ export default function Drying() {
       selected?.quantity_kg &&
       start > Number(selected.quantity_kg)
     ) {
-      setError(
+      toast.error(
         "Starting weight cannot exceed the purchased quantity."
       );
       return;
@@ -283,7 +282,7 @@ export default function Drying() {
         }
       );
 
-      setSuccess(
+      toast.success(
         editing !== null
           ? "Drying record updated."
           : "Drying record created."
@@ -294,7 +293,7 @@ export default function Drying() {
 
       await load();
     } catch (e) {
-      setError(e.message || "Unable to save drying record.");
+      toast.error(e.message || "Unable to save drying record.");
     } finally {
       setSaving(false);
     }
@@ -310,17 +309,17 @@ export default function Drying() {
     }
 
     try {
-      setError("");
+      toast.error("Unable to process this request right now. Please try again.");
 
       await apiRequest(`mill/drying/${r.id}`, {
         method: "DELETE",
         token,
       });
 
-      setSuccess("Drying record deleted.");
+      toast.success("Drying record deleted.");
       await load();
     } catch (e) {
-      setError(
+      toast.error(
         e.message ||
           "Cannot delete a drying record already used in milling."
       );
@@ -380,7 +379,7 @@ export default function Drying() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1050px] text-left text-sm">
+            <table className="w-full min-w-262.5 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
                   {[
@@ -624,7 +623,7 @@ export default function Drying() {
                 />
               </Field>
 
-              <Field label="Status">
+              <Field label="Status"> 
                 <select
                   className={inputClass}
                   name="status"

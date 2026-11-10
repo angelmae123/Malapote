@@ -18,12 +18,15 @@ class AuthController extends Controller
         $this->api = $this->call->library('api');
     }
 
+    /**
+     * Require an authenticated customer account.
+     */
     private function require_customer()
     {
         $claims = $this->api->require_jwt();
 
         $statement = $this->db->raw(
-            'SELECT id, username, full_name, email, phone_number,
+            'SELECT id, username, full_name, email, contact_number,
                     delivery_address, role, section, is_active
              FROM users
              WHERE id = ?
@@ -47,6 +50,9 @@ class AuthController extends Controller
         return $user;
     }
 
+    /**
+     * Register a new customer account.
+     */
     public function register()
     {
         $data = $this->request->json();
@@ -61,20 +67,23 @@ class AuthController extends Controller
         $username = $data['username'] ?? null;
         $email = $data['email'] ?? null;
         $password = $data['password'] ?? null;
+        $contact_number = $data['contact_number'] ?? null;
 
         if (
             !is_string($username) ||
             !is_string($email) ||
-            !is_string($password)
+            !is_string($password) ||
+            !is_string($contact_number)
         ) {
             $this->api->respond_error(
-                'Username, email, and password are required.',
+                'Username, email, password, and contact number are required.',
                 422
             );
         }
 
         $username = trim($username);
         $email = strtolower(trim($email));
+        $contact_number = trim($contact_number);
 
         if (
             $username === '' ||
@@ -84,6 +93,17 @@ class AuthController extends Controller
         ) {
             $this->api->respond_error(
                 'Provide a valid username and email.',
+                422
+            );
+        }
+
+        if (
+            $contact_number === '' ||
+            strlen($contact_number) > 30 ||
+            !preg_match('/^[0-9+\-\s()]+$/', $contact_number)
+        ) {
+            $this->api->respond_error(
+                'Provide a valid contact number.',
                 422
             );
         }
@@ -108,7 +128,8 @@ class AuthController extends Controller
         $user_id = $this->user_model->create_customer(
             $username,
             $email,
-            $password
+            $password,
+            $contact_number
         );
 
         $tokens = $this->api->issue_tokens([
@@ -123,7 +144,7 @@ class AuthController extends Controller
                 'username' => $username,
                 'full_name' => null,
                 'email' => $email,
-                'phone_number' => null,
+                'contact_number' => $contact_number,
                 'delivery_address' => null,
                 'role' => 'customer',
                 'section' => null,
@@ -132,6 +153,9 @@ class AuthController extends Controller
         ], 201);
     }
 
+    /**
+     * Login using email or username.
+     */
     public function login()
     {
         $data = $this->request->json();
@@ -182,6 +206,9 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Refresh access token.
+     */
     public function refresh()
     {
         $data = $this->request->json();
@@ -202,6 +229,9 @@ class AuthController extends Controller
         );
     }
 
+    /**
+     * Logout and revoke refresh token.
+     */
     public function logout()
     {
         $data = $this->request->json();
@@ -226,6 +256,9 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Get customer profile.
+     */
     public function get_profile()
     {
         $user = $this->require_customer();
@@ -236,6 +269,9 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Update customer profile.
+     */
     public function update_profile()
     {
         $user = $this->require_customer();
@@ -249,12 +285,12 @@ class AuthController extends Controller
         }
 
         $full_name = $data['full_name'] ?? '';
-        $phone_number = $data['phone_number'] ?? '';
+        $contact_number = $data['contact_number'] ?? '';
         $delivery_address = $data['delivery_address'] ?? '';
 
         if (
             !is_string($full_name) ||
-            !is_string($phone_number) ||
+            !is_string($contact_number) ||
             !is_string($delivery_address)
         ) {
             $this->api->respond_error(
@@ -264,7 +300,7 @@ class AuthController extends Controller
         }
 
         $full_name = trim($full_name);
-        $phone_number = trim($phone_number);
+        $contact_number = trim($contact_number);
         $delivery_address = trim($delivery_address);
 
         if (strlen($full_name) > 150) {
@@ -274,9 +310,15 @@ class AuthController extends Controller
             );
         }
 
-        if (strlen($phone_number) > 30) {
+        if (
+            strlen($contact_number) > 30 ||
+            (
+                $contact_number !== '' &&
+                !preg_match('/^[0-9+\-\s()]+$/', $contact_number)
+            )
+        ) {
             $this->api->respond_error(
-                'Phone number must not exceed 30 characters.',
+                'Provide a valid contact number.',
                 422
             );
         }
@@ -291,14 +333,14 @@ class AuthController extends Controller
         $this->db->raw(
             'UPDATE users
              SET full_name = ?,
-                 phone_number = ?,
+                 contact_number = ?,
                  delivery_address = ?
              WHERE id = ?
                AND role = ?
                AND is_active = 1',
             [
                 $full_name !== '' ? $full_name : null,
-                $phone_number !== '' ? $phone_number : null,
+                $contact_number !== '' ? $contact_number : null,
                 $delivery_address !== '' ? $delivery_address : null,
                 $user['id'],
                 'customer',
@@ -306,7 +348,7 @@ class AuthController extends Controller
         );
 
         $statement = $this->db->raw(
-            'SELECT id, username, full_name, email, phone_number,
+            'SELECT id, username, full_name, email, contact_number,
                     delivery_address, role, section, is_active
              FROM users
              WHERE id = ?
@@ -323,6 +365,9 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Check section access.
+     */
     public function section_access($section)
     {
         $user = $this->require_section_access($section);
@@ -334,6 +379,9 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Validate section administrator access.
+     */
     public function require_section_access($section)
     {
         if (!in_array($section, self::SECTIONS, true)) {

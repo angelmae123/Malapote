@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const generatePayrollCode = () =>
   `PAY-${new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14)}`;
@@ -156,9 +156,6 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -177,7 +174,6 @@ export default function PayrollPage() {
     }
 
     setLoading(true);
-    setError("");
 
     try {
       // Correct backend route:
@@ -228,7 +224,7 @@ export default function PayrollPage() {
         return String(current.id);
       });
     } catch (err) {
-      setError(err.message || "Unable to load payroll records.");
+      toast.error(err.message || "Unable to load payroll records.");
     } finally {
       setLoading(false);
     }
@@ -370,7 +366,7 @@ export default function PayrollPage() {
 
   function openAddModal() {
     if (!canAddPayroll) {
-      setError(
+      toast.error(
         "Payroll can only be added to the current month's Open payroll period."
       );
       return;
@@ -383,8 +379,8 @@ export default function PayrollPage() {
       payroll_id: generatePayrollCode(),
     });
 
-    setError("");
-    setNotice("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.notice("Notice updated.");
     setModalOpen(true);
   }
 
@@ -393,7 +389,7 @@ export default function PayrollPage() {
       !record.payroll_period_id ||
       record.period_status !== "Open"
     ) {
-      setError(
+      toast.error(
         "This payroll record cannot be edited because its period is closed or unassigned."
       );
       return;
@@ -416,8 +412,8 @@ export default function PayrollPage() {
         : "Pending",
     });
 
-    setError("");
-    setNotice("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.notice("Notice updated.");
     setModalOpen(true);
   }
 
@@ -427,7 +423,7 @@ export default function PayrollPage() {
     setModalOpen(false);
     setEditingRecord(null);
     setForm({ ...EMPTY_FORM });
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
   }
 
   function handleChange(event) {
@@ -458,18 +454,15 @@ export default function PayrollPage() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    setError("");
-    setNotice("");
-
     if (!form.payroll_id.trim()) {
-      setError(
+      toast.error(
         "Payroll code is missing. Please close and open the form again."
       );
       return;
     }
 
     if (!form.farmers_workers_id) {
-      setError("Please select an existing farmer or worker.");
+      toast.error("Please select an existing farmer or worker.");
       return;
     }
 
@@ -479,14 +472,14 @@ export default function PayrollPage() {
     );
 
     if (!worker) {
-      setError(
+      toast.error(
         "The selected farmer/worker could not be found. Please select an existing record."
       );
       return;
     }
 
     if (!worker.name?.trim()) {
-      setError(
+      toast.error(
         "The selected farmer/worker does not have a valid name."
       );
       return;
@@ -507,7 +500,7 @@ export default function PayrollPage() {
       days < 0 ||
       advance < 0
     ) {
-      setError(
+      toast.error(
         "Rate, days worked, and advance must be valid non-negative numbers."
       );
       return;
@@ -516,22 +509,22 @@ export default function PayrollPage() {
     const gross = calculateGross(rate, days);
 
     if (advance > gross) {
-      setError("Advance cannot be greater than gross pay.");
+      toast.error("Advance cannot be greater than gross pay.");
       return;
     }
 
     if (!STATUS_OPTIONS.includes(form.status)) {
-      setError("Please select a valid payroll status.");
+      toast.error("Please select a valid payroll status.");
       return;
     }
 
     if (!form.employment_type.trim()) {
-      setError("Please select an employment type.");
+      toast.error("Please select an employment type.");
       return;
     }
 
     if (!editingRecord && !canAddPayroll) {
-      setError(
+      toast.error(
         "The current payroll period is not open. You cannot add payroll at this time."
       );
       return;
@@ -563,7 +556,7 @@ export default function PayrollPage() {
           }
         );
 
-        setNotice("Payroll record updated successfully.");
+        toast.success("Payroll record updated successfully.");
       } else {
         await apiRequest("office/payroll", {
           method: "POST",
@@ -571,7 +564,7 @@ export default function PayrollPage() {
           body: payload,
         });
 
-        setNotice("Payroll record added successfully.");
+        toast.success("Payroll record added successfully.");
       }
 
       setModalOpen(false);
@@ -580,7 +573,7 @@ export default function PayrollPage() {
 
       await loadData();
     } catch (err) {
-      setError(err.message || "Unable to save payroll record.");
+      toast.error(err.message || "Unable to save payroll record.");
     } finally {
       setSaving(false);
     }
@@ -595,7 +588,7 @@ export default function PayrollPage() {
       !record.payroll_period_id ||
       record.period_status !== "Open"
     ) {
-      setError(
+      toast.error(
         "This payroll record cannot be deleted because its period is closed or unassigned."
       );
       return;
@@ -607,19 +600,16 @@ export default function PayrollPage() {
 
     if (!confirmed) return;
 
-    setError("");
-    setNotice("");
-
     try {
       await apiRequest(`office/payroll/${record.id}`, {
         method: "DELETE",
         token,
       });
 
-      setNotice("Payroll record deleted successfully.");
+      toast.success("Payroll record deleted successfully.");
       await loadData();
     } catch (err) {
-      setError(err.message || "Unable to delete payroll record.");
+      toast.error(err.message || "Unable to delete payroll record.");
     }
   }
 
@@ -674,19 +664,6 @@ export default function PayrollPage() {
           </button>
         </header>
 
-        {/* NOTIFICATIONS */}
-        {error && !modalOpen && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {notice && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {notice}
-          </div>
-        )}
-
         {/* MONTHLY PERIOD SELECTOR */}
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -701,8 +678,7 @@ export default function PayrollPage() {
                   setSelectedPeriodId(event.target.value);
                   setSearch("");
                   setStatusFilter("All");
-                  setError("");
-                  setNotice("");
+                  toast.error("Unable to process this request right now. Please try again.");
                 }}
                 disabled={loading}
                 className={inputClass}
@@ -905,7 +881,7 @@ export default function PayrollPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1200px] text-left text-sm">
+            <table className="w-full min-w-300 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-5 py-4">Payroll Code</th>
@@ -1059,7 +1035,7 @@ export default function PayrollPage() {
 
       {/* ADD / EDIT MODAL */}
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
           <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
               <div>

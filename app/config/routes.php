@@ -56,6 +56,53 @@ $router->get('api/farm/planting-harvesting/{id}', 'FarmController::planting_harv
 $router->put('api/farm/planting-harvesting/{id}', 'FarmController::update_planting_harvesting');
 $router->delete('api/farm/planting-harvesting/{id}', 'FarmController::delete_planting_harvesting');
 
+
+// =========================================================
+// FARM INPUT / FERTILIZER APPLICATION ROUTES
+// =========================================================
+
+$router->get(
+    'api/farm/input-applications',
+    'FarmController::input_applications'
+);
+
+$router->post(
+    'api/farm/input-applications',
+    'FarmController::add_input_application'
+);
+
+$router->get(
+    'api/farm/input-applications/cycle/{id}',
+    'FarmController::input_applications_by_cycle'
+);
+
+$router->get(
+    'api/farm/input-applications/totals/{id}',
+    'FarmController::input_application_totals'
+);
+
+$router->get(
+    'api/farm/input-applications/{id}',
+    'FarmController::input_application'
+);
+
+$router->put(
+    'api/farm/input-applications/{id}',
+    'FarmController::update_input_application'
+);
+
+$router->delete(
+    'api/farm/input-applications/{id}',
+    'FarmController::delete_input_application'
+);
+
+// =========================================================
+//machine learning routes
+// =========================================================
+$router->post(
+    'api/farm/palay-prediction',
+    'FarmController::palay_prediction'
+);
 // =========================================================
 // MILL ROUTES
 // =========================================================

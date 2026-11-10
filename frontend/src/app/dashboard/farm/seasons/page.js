@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const initialForm = {
   season_type: "WET",
@@ -70,8 +71,6 @@ export default function SeasonsPage() {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const loadSeasons = useCallback(async () => {
     if (!token) {
@@ -80,11 +79,10 @@ export default function SeasonsPage() {
     }
 
     try {
-      setError("");
       const response = await apiRequest("seasons", { token });
       setSeasons(getResponseData(response));
     } catch (err) {
-      setError(err.message || "Failed to load seasons.");
+      toast.error(err.message || "Failed to load seasons.");
     } finally {
       setLoading(false);
     }
@@ -118,8 +116,8 @@ export default function SeasonsPage() {
       description: season.description || "",
     });
 
-    setError("");
-    setSuccess("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.success("Action completed successfully.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -127,19 +125,19 @@ export default function SeasonsPage() {
     event.preventDefault();
 
     if (!token) {
-      setError("Your session has expired. Please log in again.");
+      toast.error("Your session has expired. Please log in again.");
       return;
     }
 
     if (form.end_date < form.start_date) {
-      setError("End date must not be earlier than start date.");
+      toast.error("End date must not be earlier than start date.");
       return;
     }
 
     try {
       setSaving(true);
-      setError("");
-      setSuccess("");
+      toast.error("Unable to process this request right now. Please try again.");
+      toast.success("Action completed successfully.");
 
       const payload = {
         ...form,
@@ -157,7 +155,7 @@ export default function SeasonsPage() {
           body: payload,
         });
 
-        setSuccess("Season updated successfully.");
+        toast.success("Season updated successfully.");
       } else {
         await apiRequest("seasons", {
           method: "POST",
@@ -165,13 +163,13 @@ export default function SeasonsPage() {
           body: payload,
         });
 
-        setSuccess("Season created successfully.");
+        toast.success("Season created successfully.");
       }
 
       resetForm();
       await loadSeasons();
     } catch (err) {
-      setError(err.message || "Unable to save season.");
+      toast.error(err.message || "Unable to save season.");
     } finally {
       setSaving(false);
     }
@@ -185,8 +183,8 @@ export default function SeasonsPage() {
     if (!confirmed) return;
 
     try {
-      setError("");
-      setSuccess("");
+      toast.error("Unable to process this request right now. Please try again.");
+      toast.success("Action completed successfully.");
 
       await apiRequest(
         `seasons/${encodeURIComponent(season.season_id)}`,
@@ -196,7 +194,7 @@ export default function SeasonsPage() {
         }
       );
 
-      setSuccess("Season deleted successfully.");
+      toast.success("Season deleted successfully.");
 
       if (editingId === season.season_id) {
         resetForm();
@@ -204,7 +202,7 @@ export default function SeasonsPage() {
 
       await loadSeasons();
     } catch (err) {
-      setError(err.message || "Unable to delete season.");
+      toast.error(err.message || "Unable to delete season.");
     }
   }
 
@@ -253,19 +251,6 @@ export default function SeasonsPage() {
             Create and manage wet and dry seasons for farm operations.
           </p>
         </div>
-
-        {/* Notifications */}
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {success}
-          </div>
-        )}
 
         {/* Form */}
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

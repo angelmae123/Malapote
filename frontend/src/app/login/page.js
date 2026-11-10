@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../providers";
 import { apiRequest } from "../../lib/api";
+import { toast } from "react-toastify";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +17,6 @@ export default function LoginPage() {
     password: "",
   });
 
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -30,7 +30,6 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
@@ -58,14 +57,14 @@ export default function LoginPage() {
       if (
         !["super_admin", "admin", "section_admin"].includes(data.user.role)
       ) {
-        setError(
+        toast.error(
           "This account does not have dashboard access. Ask an administrator to assign staff access."
         );
         return;
       }
 
       if (data.user.role === "section_admin" && !data.user.section) {
-        setError(
+        toast.error(
           "This staff account has no assigned section. Ask an administrator to update the account."
         );
         return;
@@ -85,7 +84,7 @@ export default function LoginPage() {
 
       router.replace("/dashboard");
     } catch (requestError) {
-      setError(
+      toast.error(
         requestError.message ||
           "Unable to connect to the server. Please try again."
       );
@@ -156,12 +155,6 @@ export default function LoginPage() {
               Sign in to open your workspace.
             </p>
           </div>
-
-          {error && (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium">
-              {error}
-            </div>
-          )}
 
           <form
             onSubmit={handleSubmit}

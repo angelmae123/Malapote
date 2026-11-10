@@ -10,7 +10,7 @@ class UserModel extends Model
         'username',
         'full_name',
         'email',
-        'phone_number',
+        'contact_number',
         'delivery_address',
     ];
 
@@ -27,24 +27,34 @@ class UserModel extends Model
         parent::__construct();
     }
 
+    /**
+     * Create a customer account.
+     */
     public function create_customer(
         string $username,
         string $email,
-        string $password
+        string $password,
+        string $contact_number
     ) {
+        $username = trim($username);
+        $email = strtolower(trim($email));
+        $contact_number = trim($contact_number);
+
         if (
-            trim($username) === '' ||
+            $username === '' ||
             !filter_var($email, FILTER_VALIDATE_EMAIL) ||
-            $password === ''
+            $password === '' ||
+            $contact_number === ''
         ) {
             throw new InvalidArgumentException(
-                'A username, valid email, and password are required.'
+                'Username, email, password, and contact number are required.'
             );
         }
 
         $this->db->table($this->table)->insert([
-            'username' => trim($username),
-            'email' => strtolower(trim($email)),
+            'username' => $username,
+            'email' => $email,
+            'contact_number' => $contact_number,
             'password' => password_hash($password, PASSWORD_DEFAULT),
             'role' => 'customer',
             'section' => null,
@@ -54,6 +64,9 @@ class UserModel extends Model
         return $this->db->last_id();
     }
 
+    /**
+     * Verify user credentials using email or username.
+     */
     public function verify_credentials(
         string $identifier,
         string $password

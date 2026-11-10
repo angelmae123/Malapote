@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { toast } from "react-toastify";
 import {
   CART_CHANGE_EVENT,
   getSellableStock,
@@ -238,7 +239,6 @@ function ProductImage({ item }) {
 export default function ShopCartPage() {
   const [cart, setCart] = useState([]);
   const [mounted, setMounted] = useState(false);
-  const [notice, setNotice] = useState("");
 
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -258,7 +258,7 @@ export default function ShopCartPage() {
       writeCart(items);
     } catch (error) {
       console.error("Unable to save cart:", error);
-      setNotice("Unable to update your cart. Please try again.");
+      toast.error("Unable to update your cart. Please try again.");
     }
   }, []);
 
@@ -390,11 +390,9 @@ export default function ShopCartPage() {
       if (nextQuantity < 1) return item;
 
       if (stock > 0 && nextQuantity > stock) {
-        setNotice(`Only ${stock} units are currently available.`);
+        toast.error(`Only ${stock} units are currently available.`);
         return item;
       }
-
-      setNotice("");
 
       return {
         ...item,
@@ -411,7 +409,7 @@ export default function ShopCartPage() {
     );
 
     saveCart(updatedCart);
-    setNotice("Product removed from cart.");
+    toast.success("Product removed from cart.");
   };
 
   const clearCart = () => {
@@ -420,16 +418,15 @@ export default function ShopCartPage() {
     }
 
     saveCart([]);
-    setNotice("Your cart has been cleared.");
+    toast.success("Your cart has been cleared.");
   };
 
   const openCheckout = () => {
     if (cart.length === 0) {
-      setNotice("Your cart is empty.");
+      toast.error("Your cart is empty.");
       return;
     }
 
-    setNotice("");
     setCheckoutOpen(true);
   };
 
@@ -437,7 +434,6 @@ export default function ShopCartPage() {
     if (placingOrder) return;
 
     setCheckoutOpen(false);
-    setNotice("");
   };
 
   const placeOrder = async (event) => {
@@ -446,7 +442,7 @@ export default function ShopCartPage() {
     if (placingOrder) return;
 
     if (!cart.length) {
-      setNotice("Your cart is empty.");
+      toast.error("Your cart is empty.");
       setCheckoutOpen(false);
       return;
     }
@@ -470,22 +466,22 @@ export default function ShopCartPage() {
       !barangay.trim() ||
       !payment_method
     ) {
-      setNotice("Please complete all required delivery information.");
+      toast.error("Please complete all required delivery information.");
       return;
     }
 
     if (loadingShippingRates) {
-      setNotice("Please wait while shipping rates are loading.");
+      toast.error("Please wait while shipping rates are loading.");
       return;
     }
 
     if (shippingRatesError) {
-      setNotice("Unable to load shipping rates. Please try again.");
+      toast.error("Unable to load shipping rates. Please try again.");
       return;
     }
 
     if (!selectedShippingRate) {
-      setNotice(
+      toast.error(
         "No fixed shipping fee is available for your selected municipality."
       );
       return;
@@ -499,12 +495,11 @@ export default function ShopCartPage() {
     );
 
     if (invalidItem) {
-      setNotice("One or more cart items have invalid information.");
+      toast.error("One or more cart items have invalid information.");
       return;
     }
 
     setPlacingOrder(true);
-    setNotice("");
 
     try {
       const payload = {
@@ -551,13 +546,13 @@ export default function ShopCartPage() {
         result.total_amount ?? grandTotal
       );
 
-      setNotice(
+      toast.success(
         `${result.message || "Your order has been placed successfully."}${orderCode} Shipping: ${formatCurrency(confirmedShipping)}. Total: ${formatCurrency(confirmedTotal)}.`
       );
     } catch (error) {
       console.error("Checkout error:", error);
 
-      setNotice(
+      toast.error(
         error.message ||
           "Unable to connect to the server. Please try again."
       );
@@ -704,15 +699,6 @@ export default function ShopCartPage() {
             </Link>
           </div>
         </section>
-
-        {notice && (
-          <div
-            role="status"
-            className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
-          >
-            {notice}
-          </div>
-        )}
 
         {/* EMPTY CART */}
         {cart.length === 0 ? (

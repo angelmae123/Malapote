@@ -17,6 +17,7 @@ const navigation = [
     links: [
       // { label: "Seasons", href: "/dashboard/farm/seasons", icon: "◷" },
       { label: "Farm activity", href: "/dashboard/farm/activity", icon: "✳" },
+      { label: "Farm Inputs", href: "/dashboard/farm/farminput", icon: "✎" },
       { label: "Farm inventory", href: "/dashboard/farm/inventory", icon: "▤" },
       {
         label: "Planting & harvest",

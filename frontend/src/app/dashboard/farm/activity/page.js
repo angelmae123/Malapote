@@ -1,26 +1,20 @@
-
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
+import { toast } from "react-toastify";
 import { apiRequest } from "../../../../lib/api";
-import SeasonSelect from "../../../../components/dashboard/SeasonSelect";
 import SeasonHistoryFilters from "../../../../components/dashboard/SeasonHistoryFilters";
 import {
   getHistoryYears,
-  getSeasonLabel,
   matchesSeasonHistory,
 } from "../../../../lib/seasonHistory";
 
 const initialForm = {
   farm_planting_harvesting_id: "",
-  season: "",
-  area: "",
   activity: "",
-  type_of_seedling: "",
-  fertilizers: "",
-  antipesticide: "",
   date: "",
+  notes: "",
 };
 
 function getResponseData(response) {
@@ -44,42 +38,141 @@ function formatDate(date) {
   });
 }
 
+function formatArea(value) {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return `${value} hectares`;
+  }
+
+  return `${number.toLocaleString("en-PH", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })} hectares`;
+}
+
+function getActivityCode(record) {
+  return (
+    record.record_code ||
+    `ACT-${String(record.id).padStart(6, "0")}`
+  );
+}
+
+function getPlantingCode(record) {
+  return (
+    record.record_code ||
+    `PLANTING #${record.id}`
+  );
+}
+
+function getPlantingLabel(record) {
+  const code = getPlantingCode(record);
+  const field = record.field_name || "Unnamed Field";
+  const variety = record.rice_variety || "No Variety";
+  const season = record.season || "No Season";
+  const status = record.status || "No Status";
+
+  return `${code} · ${field} · ${variety} · ${season} · ${status}`;
+}
+
+function getActivityArea(record) {
+  const area =
+    record.area_hectares !== null &&
+    record.area_hectares !== undefined &&
+    record.area_hectares !== ""
+      ? record.area_hectares
+      : record.area;
+
+  return formatArea(area);
+}
+
+function getActivitySeason(record) {
+  return record.planting_season || record.season || "—";
+}
+
+function getActivityVariety(record) {
+  return (
+    record.rice_variety ||
+    record.type_of_seedling ||
+    "—"
+  );
+}
+
 export default function FarmActivity() {
   const { session } = useAuth();
+  const token = session?.accessToken;
 
   const [activities, setActivities] = useState([]);
+  const [plantingRecords, setPlantingRecords] = useState([]);
   const [seasons, setSeasons] = useState([]);
+
   const [historySearch, setHistorySearch] = useState("");
   const [historyType, setHistoryType] = useState("all");
   const [historyYear, setHistoryYear] = useState("all");
-  const [formData, setFormData] = useState(initialForm);
 
+  const [formData, setFormData] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const token = session?.accessToken;
-
-  const historyFilters = {
-    search: historySearch,
-    type: historyType,
-    year: historyYear,
-  };
-
-  const filteredActivities = activities.filter((record) =>
-    matchesSeasonHistory(record, seasons, historyFilters, "season")
+  const availablePlantingRecords = useMemo(
+    () =>
+      plantingRecords.filter((record) =>
+        ["Planned", "Growing", "Harvested"].includes(
+          String(record.status || "").trim()
+        )
+      ),
+    [plantingRecords]
   );
 
-  const historyYears = getHistoryYears(activities, seasons, "season");
+  const selectedPlanting = useMemo(
+    () =>
+      plantingRecords.find(
+        (record) =>
+          String(record.id) ===
+          String(formData.farm_planting_harvesting_id)
+      ) || null,
+    [plantingRecords, formData.farm_planting_harvesting_id]
+  );
+
+  const historyFilters = useMemo(
+    () => ({
+      search: historySearch,
+      type: historyType,
+      year: historyYear,
+    }),
+    [historySearch, historyType, historyYear]
+  );
+
+  const filteredActivities = useMemo(
+    () =>
+      activities.filter((record) =>
+        matchesSeasonHistory(
+          record,
+          seasons,
+          historyFilters,
+          "season"
+        )
+      ),
+    [activities, seasons, historyFilters]
+  );
+
+  const historyYears = useMemo(
+    () => getHistoryYears(activities, seasons, "season"),
+    [activities, seasons]
+  );
 
   const loadData = useCallback(async () => {
     if (!token) {
       setLoading(false);
-      setError("Your session has expired. Please sign in again.");
+      toast.error("Your session has expired. Please sign in again.");
       return;
     }
 
@@ -87,24 +180,36 @@ export default function FarmActivity() {
     setError("");
 
     try {
-      const [activityResponse, seasonResponse] = await Promise.all([
+      const [
+        activityResponse,
+        plantingResponse,
+        seasonResponse,
+      ] = await Promise.all([
         apiRequest("farm/activities", { token }),
+        apiRequest("farm/planting-harvesting", { token }),
         apiRequest("seasons", { token }),
       ]);
 
       setActivities(getResponseData(activityResponse));
+      setPlantingRecords(getResponseData(plantingResponse));
       setSeasons(getResponseData(seasonResponse));
     } catch (requestError) {
-      setError(
-        requestError.message || "Unable to load farm activity records."
-      );
+      const message =
+        requestError.message ||
+        "Unable to load farm activity records.";
+
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    const timer = window.setTimeout(loadData, 0);
+    const timer = window.setTimeout(() => {
+      loadData();
+    }, 0);
+
     return () => window.clearTimeout(timer);
   }, [loadData]);
 
@@ -128,66 +233,60 @@ export default function FarmActivity() {
     setFormData(initialForm);
     setEditingId(null);
     setError("");
-    setSuccess("");
     setShowForm(true);
   };
 
   const handleEdit = (record) => {
-    setError("");
-    setSuccess("");
+    const plantingId = record.farm_planting_harvesting_id
+      ? String(record.farm_planting_harvesting_id)
+      : "";
 
     setFormData({
-      farm_planting_harvesting_id:
-        record.farm_planting_harvesting_id ?? "",
-      season: record.season ?? "",
-      area: record.area ?? "",
+      farm_planting_harvesting_id: plantingId,
       activity: record.activity ?? "",
-      type_of_seedling: record.type_of_seedling ?? "",
-      fertilizers: record.fertilizers ?? "",
-      antipesticide: record.antipesticide ?? "",
       date: record.date ?? "",
+      notes: record.notes ?? "",
     });
 
     setEditingId(record.id);
+    setError("");
     setShowForm(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    setError("");
-    setSuccess("");
-
     if (!token) {
-      setError("Your session has expired. Please sign in again.");
+      toast.error("Your session has expired. Please sign in again.");
       return;
     }
 
-    if (!formData.season) {
-      setError("Please select a season.");
+    if (!formData.farm_planting_harvesting_id) {
+      toast.error("Please select a Planting & Harvesting record.");
       return;
     }
 
-    if (!formData.area.trim() || !formData.activity.trim()) {
-      setError("Please complete the required fields.");
+    if (!formData.activity.trim()) {
+      toast.error("Activity is required.");
+      return;
+    }
+
+    if (!selectedPlanting) {
+      toast.error("Please select a valid planting record.");
       return;
     }
 
     const payload = {
-      farm_planting_harvesting_id:
-        formData.farm_planting_harvesting_id === ""
-          ? null
-          : Number(formData.farm_planting_harvesting_id),
-      season: formData.season,
-      area: formData.area.trim(),
+      farm_planting_harvesting_id: Number(
+        formData.farm_planting_harvesting_id
+      ),
       activity: formData.activity.trim(),
-      type_of_seedling: formData.type_of_seedling.trim(),
-      fertilizers: formData.fertilizers.trim(),
-      antipesticide: formData.antipesticide.trim(),
       date: formData.date || null,
+      notes: formData.notes.trim() || null,
     };
 
     setSaving(true);
+    setError("");
 
     try {
       if (editingId !== null) {
@@ -197,7 +296,7 @@ export default function FarmActivity() {
           body: payload,
         });
 
-        setSuccess("Farm activity updated successfully.");
+        toast.success("Farm activity updated successfully.");
       } else {
         await apiRequest("farm/activities", {
           method: "POST",
@@ -205,29 +304,34 @@ export default function FarmActivity() {
           body: payload,
         });
 
-        setSuccess("Farm activity added successfully.");
+        toast.success("Farm activity added successfully.");
       }
 
       resetForm();
       await loadData();
     } catch (requestError) {
-      setError(
-        requestError.message || "Unable to save the farm activity."
-      );
+      const message =
+        requestError.message ||
+        "Unable to save the farm activity.";
+
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (record) => {
+    if (!token) {
+      toast.error("Your session has expired. Please sign in again.");
+      return;
+    }
+
     const confirmed = window.confirm(
-      "Are you sure you want to delete this farm activity?"
+      `Are you sure you want to delete ${getActivityCode(record)}?`
     );
 
     if (!confirmed) return;
-
-    setError("");
-    setSuccess("");
 
     try {
       await apiRequest(`farm/activities/${record.id}`, {
@@ -235,11 +339,12 @@ export default function FarmActivity() {
         token,
       });
 
-      setSuccess("Farm activity deleted successfully.");
+      toast.success("Farm activity deleted successfully.");
       await loadData();
     } catch (requestError) {
-      setError(
-        requestError.message || "Unable to delete the farm activity."
+      toast.error(
+        requestError.message ||
+          "Unable to delete the farm activity."
       );
     }
   };
@@ -247,8 +352,6 @@ export default function FarmActivity() {
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-800 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-
-        {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">
@@ -260,33 +363,26 @@ export default function FarmActivity() {
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
-              Record and track your farm activities.
+              Record and track activities linked to planting cycles.
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleAdd}
-            className="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-800"
+            disabled={availablePlantingRecords.length === 0 || loading}
+            className="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             + Add Farm Activity
           </button>
         </div>
 
-        {/* Alerts */}
         {error && !showForm && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {success && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {success}
-          </div>
-        )}
-
-        {/* Add / Edit Modal */}
         {showForm && (
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-6"
@@ -302,7 +398,6 @@ export default function FarmActivity() {
               aria-labelledby="farm-activity-modal-title"
               className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
             >
-              {/* Modal Header */}
               <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
                 <div>
                   <p className="mb-1 text-xs font-bold uppercase tracking-widest text-blue-900">
@@ -319,7 +414,7 @@ export default function FarmActivity() {
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Enter the details of the farm activity.
+                    Select a planting record and enter the activity details.
                   </p>
                 </div>
 
@@ -334,7 +429,6 @@ export default function FarmActivity() {
                 </button>
               </div>
 
-              {/* Modal Form */}
               <form
                 onSubmit={handleSubmit}
                 className="flex min-h-0 flex-1 flex-col"
@@ -346,83 +440,120 @@ export default function FarmActivity() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
-                    {/* Planting Record ID */}
+                  <div className="space-y-5">
                     <div>
                       <label
                         htmlFor="farm_planting_harvesting_id"
                         className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
                       >
-                        Planting Record ID
+                        Planting & Harvesting Record
+                        <span className="text-red-500"> *</span>
                       </label>
 
-                      <input
+                      <select
                         id="farm_planting_harvesting_id"
-                        type="number"
-                        min="1"
-                        step="1"
                         name="farm_planting_harvesting_id"
                         value={formData.farm_planting_harvesting_id}
                         onChange={handleChange}
-                        placeholder="Enter planting record ID"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
-                      />
-                    </div>
-
-                    {/* Season */}
-                    <div>
-                      <label
-                        htmlFor="season"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
+                        required
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
                       >
-                        Season <span className="text-red-500">*</span>
-                      </label>
+                        <option value="">
+                          Select planting record
+                        </option>
 
-                      <SeasonSelect
-                        id="season"
-                        name="season"
-                        value={formData.season}
-                        seasons={seasons}
-                        valueField="label"
-                        onChange={handleChange}
-                      />
+                        {availablePlantingRecords.map((record) => (
+                          <option key={record.id} value={record.id}>
+                            {getPlantingLabel(record)}
+                          </option>
+                        ))}
+                      </select>
 
-                      {seasons.length === 0 && (
+                      {availablePlantingRecords.length === 0 && (
                         <p className="mt-2 text-xs text-amber-700">
-                          No season records available. Please check the seasons table.
+                          No eligible planting records found. Create a
+                          Planned, Growing, or Harvested planting record
+                          first.
                         </p>
                       )}
                     </div>
 
-                    {/* Area */}
-                    <div>
-                      <label
-                        htmlFor="area"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Area / Field <span className="text-red-500">*</span>
-                      </label>
+                    {selectedPlanting && (
+                      <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
+                        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-blue-900">
+                          Selected Planting Information
+                        </p>
 
-                      <input
-                        id="area"
-                        type="text"
-                        name="area"
-                        value={formData.area}
-                        onChange={handleChange}
-                        required
-                        placeholder="Enter area or field"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
-                      />
-                    </div>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div>
+                            <p className="text-xs text-slate-500">
+                              Record Code
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                              {getPlantingCode(selectedPlanting)}
+                            </p>
+                          </div>
 
-                    {/* Activity */}
+                          <div>
+                            <p className="text-xs text-slate-500">
+                              Field
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                              {selectedPlanting.field_name || "—"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-slate-500">
+                              Season
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                              {selectedPlanting.season || "—"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-slate-500">
+                              Area
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                              {formatArea(selectedPlanting.area_hectares)}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-slate-500">
+                              Rice Variety
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                              {selectedPlanting.rice_variety || "—"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-slate-500">
+                              Planting Status
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                              {selectedPlanting.status || "—"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="mt-3 text-xs text-blue-800">
+                          These details are automatically taken from the
+                          selected planting record.
+                        </p>
+                      </div>
+                    )}
+
                     <div>
                       <label
                         htmlFor="activity"
                         className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
                       >
-                        Activity <span className="text-red-500">*</span>
+                        Farm Activity
+                        <span className="text-red-500"> *</span>
                       </label>
 
                       <input
@@ -431,73 +562,13 @@ export default function FarmActivity() {
                         name="activity"
                         value={formData.activity}
                         onChange={handleChange}
+                        maxLength={100}
                         required
-                        placeholder="e.g. Land preparation"
+                        placeholder="e.g. Land Preparation, Transplanting, Irrigation"
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
                       />
                     </div>
 
-                    {/* Seedling */}
-                    <div>
-                      <label
-                        htmlFor="type_of_seedling"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Type of Seedling
-                      </label>
-
-                      <input
-                        id="type_of_seedling"
-                        type="text"
-                        name="type_of_seedling"
-                        value={formData.type_of_seedling}
-                        onChange={handleChange}
-                        placeholder="Enter seedling type"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
-                      />
-                    </div>
-
-                    {/* Fertilizers */}
-                    <div>
-                      <label
-                        htmlFor="fertilizers"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Fertilizers
-                      </label>
-
-                      <input
-                        id="fertilizers"
-                        type="text"
-                        name="fertilizers"
-                        value={formData.fertilizers}
-                        onChange={handleChange}
-                        placeholder="Enter fertilizers used"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
-                      />
-                    </div>
-
-                    {/* Pesticide */}
-                    <div>
-                      <label
-                        htmlFor="antipesticide"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Pesticide / Treatment
-                      </label>
-
-                      <input
-                        id="antipesticide"
-                        type="text"
-                        name="antipesticide"
-                        value={formData.antipesticide}
-                        onChange={handleChange}
-                        placeholder="Enter pesticide or treatment"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
-                      />
-                    </div>
-
-                    {/* Date */}
                     <div>
                       <label
                         htmlFor="date"
@@ -514,11 +585,34 @@ export default function FarmActivity() {
                         onChange={handleChange}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
                       />
+                      <p className="mt-1 text-xs text-slate-400">
+                        Optional. You can leave this blank if the date is
+                        not yet available.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="notes"
+                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
+                      >
+                        Notes
+                      </label>
+
+                      <textarea
+                        id="notes"
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleChange}
+                        rows={3}
+                        maxLength={10000}
+                        placeholder="Additional details about this farm activity..."
+                        className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Modal Footer */}
                 <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
                   <button
                     type="button"
@@ -531,7 +625,12 @@ export default function FarmActivity() {
 
                   <button
                     type="submit"
-                    disabled={saving || seasons.length === 0}
+                    disabled={
+                      saving ||
+                      !selectedPlanting ||
+                      !formData.farm_planting_harvesting_id ||
+                      availablePlantingRecords.length === 0
+                    }
                     className="rounded-xl bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving
@@ -546,7 +645,6 @@ export default function FarmActivity() {
           </div>
         )}
 
-        {/* Activity Table */}
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-2 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
@@ -594,7 +692,8 @@ export default function FarmActivity() {
               </h3>
 
               <p className="mt-1 text-sm text-slate-500">
-                Click Add Farm Activity to create your first record.
+                Create a planting record first, then add your farm
+                activities.
               </p>
             </div>
           ) : filteredActivities.length === 0 ? (
@@ -603,15 +702,30 @@ export default function FarmActivity() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[950px] text-left text-sm">
+              <table className="w-full min-w-[1050px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-5 py-4 font-bold">Date</th>
-                    <th className="px-5 py-4 font-bold">Activity</th>
-                    <th className="px-5 py-4 font-bold">Area / Field</th>
-                    <th className="px-5 py-4 font-bold">Season</th>
-                    <th className="px-5 py-4 font-bold">Fertilizer</th>
-                    <th className="px-5 py-4 font-bold">Seedling</th>
+                    <th className="px-5 py-4 font-bold">
+                      Record Code
+                    </th>
+                    <th className="px-5 py-4 font-bold">
+                      Planting Record
+                    </th>
+                    <th className="px-5 py-4 font-bold">
+                      Activity
+                    </th>
+                    <th className="px-5 py-4 font-bold">
+                      Area
+                    </th>
+                    <th className="px-5 py-4 font-bold">
+                      Season
+                    </th>
+                    <th className="px-5 py-4 font-bold">
+                      Rice Variety
+                    </th>
+                    <th className="px-5 py-4 font-bold">
+                      Date
+                    </th>
                     <th className="px-5 py-4 text-right font-bold">
                       Actions
                     </th>
@@ -624,30 +738,43 @@ export default function FarmActivity() {
                       key={record.id}
                       className="transition hover:bg-slate-50"
                     >
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
-                        {formatDate(record.date)}
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-blue-900">
+                        {getActivityCode(record)}
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-600">
+                        {record.planting_record_code ||
+                          (record.farm_planting_harvesting_id
+                            ? `PLANTING #${record.farm_planting_harvesting_id}`
+                            : "Not linked")}
+
+                        {record.field_name && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            {record.field_name}
+                          </p>
+                        )}
                       </td>
 
                       <td className="px-5 py-4 font-semibold text-slate-800">
                         {record.activity || "—"}
                       </td>
 
-                      <td className="px-5 py-4 text-slate-600">
-                        {record.area || "—"}
+                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                        {getActivityArea(record)}
                       </td>
 
                       <td className="px-5 py-4">
                         <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
-                          {getSeasonLabel(null, record.season) || "—"}
+                          {getActivitySeason(record)}
                         </span>
                       </td>
 
                       <td className="px-5 py-4 text-slate-600">
-                        {record.fertilizers || "—"}
+                        {getActivityVariety(record)}
                       </td>
 
-                      <td className="px-5 py-4 text-slate-600">
-                        {record.type_of_seedling || "—"}
+                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                        {formatDate(record.date)}
                       </td>
 
                       <td className="px-5 py-4">

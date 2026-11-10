@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const EMPTY_FORM = {
   start_date: "",
@@ -187,9 +188,6 @@ export default function ReportsPage() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
@@ -199,7 +197,6 @@ export default function ReportsPage() {
 
   const loadReports = useCallback(async () => {
     setLoading(true);
-    setError("");
 
     try {
       const response = await apiRequest("sales/reports", {
@@ -208,7 +205,7 @@ export default function ReportsPage() {
 
       setReports(getResponseData(response));
     } catch (err) {
-      setError(err.message || "Unable to load weekly reports.");
+      toast.error(err.message || "Unable to load weekly reports.");
     } finally {
       setLoading(false);
     }
@@ -270,8 +267,8 @@ export default function ReportsPage() {
     setForm({ ...EMPTY_FORM });
     setPreview(null);
 
-    setError("");
-    setNotice("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.notice("Notice updated.");
     setModalOpen(true);
   }
 
@@ -286,8 +283,8 @@ export default function ReportsPage() {
     // Require a fresh preview before updating.
     setPreview(null);
 
-    setError("");
-    setNotice("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.notice("Notice updated.");
     setModalOpen(true);
   }
 
@@ -296,7 +293,7 @@ export default function ReportsPage() {
     setEditingReport(null);
     setForm(EMPTY_FORM);
     setPreview(null);
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
   }
 
   function handleChange(event) {
@@ -309,21 +306,19 @@ export default function ReportsPage() {
 
     // Previous totals are no longer valid after changing dates.
     setPreview(null);
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
   }
 
   async function handleGenerateReport() {
-    setError("");
-    setNotice("");
     setPreview(null);
 
     if (!form.start_date || !form.end_date) {
-      setError("Please select both start date and end date.");
+      toast.error("Please select both start date and end date.");
       return;
     }
 
     if (form.end_date < form.start_date) {
-      setError("End date cannot be earlier than start date.");
+      toast.error("End date cannot be earlier than start date.");
       return;
     }
 
@@ -360,7 +355,7 @@ export default function ReportsPage() {
         generated_date: result.generated_date || "",
       });
     } catch (err) {
-      setError(err.message || "Unable to generate weekly report.");
+      toast.error(err.message || "Unable to generate weekly report.");
     } finally {
       setGenerating(false);
     }
@@ -369,21 +364,18 @@ export default function ReportsPage() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    setError("");
-    setNotice("");
-
     if (!form.start_date || !form.end_date) {
-      setError("Please select both start date and end date.");
+      toast.error("Please select both start date and end date.");
       return;
     }
 
     if (form.end_date < form.start_date) {
-      setError("End date cannot be earlier than start date.");
+      toast.error("End date cannot be earlier than start date.");
       return;
     }
 
     if (!previewIsCurrent) {
-      setError("Please generate the report preview before saving.");
+      toast.error("Please generate the report preview before saving.");
       return;
     }
 
@@ -404,7 +396,7 @@ export default function ReportsPage() {
           body: payload,
         });
 
-        setNotice("Weekly report updated successfully.");
+        toast.success("Weekly report updated successfully.");
       } else {
         await apiRequest("sales/reports", {
           method: "POST",
@@ -412,13 +404,13 @@ export default function ReportsPage() {
           body: payload,
         });
 
-        setNotice("Weekly report saved successfully.");
+        toast.success("Weekly report saved successfully.");
       }
 
       closeModal();
       await loadReports();
     } catch (err) {
-      setError(err.message || "Unable to save weekly report.");
+      toast.error(err.message || "Unable to save weekly report.");
     } finally {
       setSaving(false);
     }
@@ -431,19 +423,16 @@ export default function ReportsPage() {
 
     if (!confirmed) return;
 
-    setError("");
-    setNotice("");
-
     try {
       await apiRequest(`sales/reports/${report.id}`, {
         method: "DELETE",
         token,
       });
 
-      setNotice("Weekly report deleted successfully.");
+      toast.success("Weekly report deleted successfully.");
       await loadReports();
     } catch (err) {
-      setError(err.message || "Unable to delete weekly report.");
+      toast.error(err.message || "Unable to delete weekly report.");
     }
   }
 
@@ -474,19 +463,6 @@ export default function ReportsPage() {
             + Generate Report
           </button>
         </header>
-
-        {/* ALERTS */}
-        {error && !modalOpen && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {notice && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {notice}
-          </div>
-        )}
 
         {/* SUMMARY */}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

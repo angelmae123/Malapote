@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../providers";
 import { apiRequest } from "../../../lib/api";
+import { toast } from "react-toastify";
 import ShopLogoutButton from "../ShopLogoutButton";
 
 const NAVIGATION = [
@@ -186,13 +187,10 @@ export default function ShopProfilePage() {
   const [activeSection, setActiveSection] = useState("profile");
   const [expandedSetting, setExpandedSetting] = useState("");
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
 
   const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
 
       const response = await apiRequest("shop/profile");
       const user = response?.user;
@@ -215,7 +213,7 @@ export default function ShopProfilePage() {
       setFormData(customerProfile);
     } catch (err) {
       console.error("Profile loading error:", err);
-      setError(err?.message || "Unable to load your profile.");
+      toast.error(err?.message || "Unable to load your profile.");
     } finally {
       setLoading(false);
     }
@@ -226,7 +224,7 @@ export default function ShopProfilePage() {
 
     if (!session?.accessToken) {
       setLoading(false);
-      setError("Your session is unavailable. Please log in again.");
+      toast.error("Your session is unavailable. Please log in again.");
       return;
     }
 
@@ -245,8 +243,6 @@ export default function ShopProfilePage() {
   function handleCancelEdit() {
     setFormData(profile);
     setEditing(false);
-    setError("");
-    setMessage("");
   }
 
   async function handleSaveProfile(event) {
@@ -254,8 +250,6 @@ export default function ShopProfilePage() {
 
     try {
       setSaving(true);
-      setError("");
-      setMessage("");
 
       const response = await apiRequest("shop/profile", {
         method: "PUT",
@@ -281,10 +275,10 @@ export default function ShopProfilePage() {
       setProfile(updatedProfile);
       setFormData(updatedProfile);
       setEditing(false);
-      setMessage("Your profile has been updated successfully.");
+      toast.success("Your profile has been updated successfully.");
     } catch (err) {
       console.error("Profile update error:", err);
-      setError(err?.message || "Unable to update your profile.");
+      toast.error(err?.message || "Unable to update your profile.");
     } finally {
       setSaving(false);
     }
@@ -439,8 +433,6 @@ export default function ShopProfilePage() {
               type="button"
               onClick={() => {
                 setActiveSection("profile");
-                setError("");
-                setMessage("");
               }}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-bold transition ${
                 activeSection === "profile"
@@ -460,8 +452,6 @@ export default function ShopProfilePage() {
               type="button"
               onClick={() => {
                 setActiveSection("settings");
-                setError("");
-                setMessage("");
               }}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-bold transition ${
                 activeSection === "settings"
@@ -488,32 +478,6 @@ export default function ShopProfilePage() {
           {/* MAIN PANEL */}
           <section className="min-w-0">
 
-            {error && (
-              <div
-                role="alert"
-                className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-              >
-                <span>{error}</span>
-
-                <button
-                  type="button"
-                  onClick={loadProfile}
-                  className="shrink-0 font-bold underline"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {message && (
-              <div
-                role="status"
-                className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700"
-              >
-                ✓ {message}
-              </div>
-            )}
-
             {/* PROFILE */}
             {activeSection === "profile" && (
               <div className="overflow-hidden rounded-xl border border-[#e0e8f4] bg-white shadow-sm">
@@ -535,8 +499,6 @@ export default function ShopProfilePage() {
                       onClick={() => {
                         setFormData(profile);
                         setEditing(true);
-                        setError("");
-                        setMessage("");
                       }}
                       className="rounded-lg bg-[#2863ee] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#174fcf]"
                     >

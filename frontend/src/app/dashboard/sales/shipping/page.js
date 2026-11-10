@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const EMPTY_FORM = {
   municipality: "",
@@ -80,9 +81,6 @@ export default function ShippingRatesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -97,7 +95,6 @@ export default function ShippingRatesPage() {
     if (!token) return;
 
     setLoading(true);
-    setError("");
 
     try {
       const response = await apiRequest(API_ENDPOINT, {
@@ -106,7 +103,7 @@ export default function ShippingRatesPage() {
 
       setShippingRates(getResponseData(response));
     } catch (err) {
-      setError(err.message || "Unable to load shipping rates.");
+      toast.error(err.message || "Unable to load shipping rates.");
     } finally {
       setLoading(false);
     }
@@ -184,12 +181,10 @@ export default function ShippingRatesPage() {
 
     setModalOpen(false);
     resetForm();
-    setError("");
   }
 
   function openAddModal() {
     resetForm();
-    setError("");
     setModalOpen(true);
   }
 
@@ -263,13 +258,11 @@ export default function ShippingRatesPage() {
     const validationError = validateForm();
 
     if (validationError) {
-      setError(validationError);
+      toast.error(validationError);
       return;
     }
 
     setSaving(true);
-    setError("");
-    setNotice("");
 
     const payload = {
       municipality: form.municipality.trim(),
@@ -289,7 +282,7 @@ export default function ShippingRatesPage() {
           body: payload,
         });
 
-        setNotice("Shipping rate updated successfully.");
+        toast.success("Shipping rate updated successfully.");
       } else {
         await apiRequest(API_ENDPOINT, {
           method: "POST",
@@ -297,7 +290,7 @@ export default function ShippingRatesPage() {
           body: payload,
         });
 
-        setNotice("Shipping rate added successfully.");
+        toast.success("Shipping rate added successfully.");
       }
 
       setModalOpen(false);
@@ -305,7 +298,7 @@ export default function ShippingRatesPage() {
 
       await loadShippingRates();
     } catch (err) {
-      setError(err.message || "Unable to save shipping rate.");
+      toast.error(err.message || "Unable to save shipping rate.");
     } finally {
       setSaving(false);
     }
@@ -320,20 +313,17 @@ export default function ShippingRatesPage() {
 
     if (!confirmed) return;
 
-    setError("");
-    setNotice("");
-
     try {
       await apiRequest(`${API_ENDPOINT}/${rate.id}`, {
         method: "DELETE",
         token,
       });
 
-      setNotice("Shipping rate deleted successfully.");
+      toast.success("Shipping rate deleted successfully.");
 
       await loadShippingRates();
     } catch (err) {
-      setError(err.message || "Unable to delete shipping rate.");
+      toast.error(err.message || "Unable to delete shipping rate.");
     }
   }
 
@@ -369,20 +359,6 @@ export default function ShippingRatesPage() {
             + Add Shipping Rate
           </button>
         </header>
-
-        {/* ALERTS */}
-
-        {error && !modalOpen && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {notice && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {notice}
-          </div>
-        )}
 
         {/* SUMMARY */}
 

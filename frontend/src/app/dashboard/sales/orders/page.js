@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 import { getLowStockInfo } from "../../../../lib/lowStock";
 
 const ORDER_STATUSES = ["Pending", "Processing", "Delivered", "Cancelled"];
@@ -157,7 +157,6 @@ export default function Orders() {
 
     try {
       setLoading(true);
-      setError("");
 
       const [response, productResult] = await Promise.all([
         apiRequest("sales/orders", { token }),
@@ -192,7 +191,7 @@ export default function Orders() {
 
       setSelectedPaymentStatuses(paymentStatusValues);
     } catch (err) {
-      setError(err.message || "Failed to load customer orders.");
+      toast.error(err.message || "Failed to load customer orders.");
     } finally {
       setLoading(false);
     }
@@ -260,8 +259,8 @@ export default function Orders() {
       }));
     }
 
-    setSuccess("");
-    setError("");
+    toast.success("Action completed successfully.");
+    toast.error("Unable to process this request right now. Please try again.");
   };
 
   const handlePaymentStatusChange = (orderId, status) => {
@@ -270,8 +269,8 @@ export default function Orders() {
       [orderId]: status,
     }));
 
-    setSuccess("");
-    setError("");
+    toast.success("Action completed successfully.");
+    toast.error("Unable to process this request right now. Please try again.");
   };
 
   const saveOrderChanges = async (order) => {
@@ -283,7 +282,7 @@ export default function Orders() {
         : selectedPaymentStatuses[orderId] || "Unpaid";
 
     if (!orderId) {
-      setError("Order ID is missing. Cannot update this order.");
+      toast.error("Order ID is missing. Cannot update this order.");
       return;
     }
 
@@ -291,7 +290,7 @@ export default function Orders() {
       (!newStatus || newStatus === order.status) &&
       newPaymentStatus === (order.payment_status || "Unpaid")
     ) {
-      setError("Please change the order status or payment status first.");
+      toast.error("Please change the order status or payment status first.");
       return;
     }
 
@@ -301,8 +300,8 @@ export default function Orders() {
         [orderId]: true,
       }));
 
-      setError("");
-      setSuccess("");
+      toast.error("Unable to process this request right now. Please try again.");
+      toast.success("Action completed successfully.");
 
       await apiRequest(`sales/orders/${orderId}`, {
         method: "PUT",
@@ -339,7 +338,7 @@ export default function Orders() {
         )
       );
 
-      setSuccess(`Order ${order.order_code} updated successfully.`);
+      toast.success(`Order ${order.order_code} updated successfully.`);
     } catch (err) {
       setSelectedStatuses((previous) => ({
         ...previous,
@@ -350,7 +349,7 @@ export default function Orders() {
         [orderId]: order.payment_status || "Unpaid",
       }));
 
-      setError(err.message || "Failed to update order status.");
+      toast.error(err.message || "Failed to update order status.");
     } finally {
       setSavingOrders((previous) => ({
         ...previous,
@@ -392,7 +391,7 @@ export default function Orders() {
         {error && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <span>{error}</span>
-            <button type="button" onClick={() => setError("")} className="font-bold">
+            <button type="button" onClick={() => toast.error("Unable to process this request right now. Please try again.")} className="font-bold">
               ×
             </button>
           </div>
@@ -401,7 +400,7 @@ export default function Orders() {
         {success && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             <span>{success}</span>
-            <button type="button" onClick={() => setSuccess("")} className="font-bold">
+            <button type="button" onClick={() => toast.success("Action completed successfully.")} className="font-bold">
               ×
             </button>
           </div>

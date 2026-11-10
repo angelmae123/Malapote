@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
+import { toast } from "react-toastify";
 
 const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100";
@@ -53,7 +54,7 @@ function Notice({ error, success }) {
 function Modal({ title, onClose, saving, children }) {
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4"
+      className="fixed inset-0 z-100 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4"
       onMouseDown={(e) =>
         e.target === e.currentTarget && !saving && onClose()
       }
@@ -123,13 +124,11 @@ export default function Milling() {
   const load = useCallback(async () => {
     if (!token) {
       setLoading(false);
-      setError("Session expired. Please sign in again.");
+      toast.error("Session expired. Please sign in again.");
       return;
     }
 
     try {
-      setError("");
-
       const [millingResponse, dryingResponse] = await Promise.all([
         apiRequest("mill/milling", { token }),
         apiRequest("mill/drying", { token }),
@@ -138,7 +137,7 @@ export default function Milling() {
       setRecords(rows(millingResponse));
       setDryings(rows(dryingResponse));
     } catch (e) {
-      setError(e.message || "Unable to load milling data.");
+      toast.error(e.message || "Unable to load milling data.");
     } finally {
       setLoading(false);
     }
@@ -184,8 +183,8 @@ export default function Milling() {
   const openAdd = () => {
     setEditing(null);
     setForm({ ...blank, milling_id: code("MILL") });
-    setError("");
-    setSuccess("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.success("Action completed successfully.");
     setModal(true);
   };
 
@@ -207,8 +206,8 @@ export default function Milling() {
       status: r.status || "Completed",
     });
 
-    setError("");
-    setSuccess("");
+    toast.error("Unable to process this request right now. Please try again.");
+    toast.success("Action completed successfully.");
     setModal(true);
   };
 
@@ -228,10 +227,10 @@ export default function Milling() {
 
   async function submit(e) {
     e.preventDefault();
-    setError("");
+    toast.error("Unable to process this request right now. Please try again.");
 
     if (!selected) {
-      setError("Select a completed drying batch.");
+      toast.error("Select a completed drying batch.");
       return;
     }
 
@@ -240,7 +239,7 @@ export default function Milling() {
       input <= 0 ||
       input > currentRemaining
     ) {
-      setError(
+      toast.error(
         `Dried input must be greater than zero and cannot exceed the remaining ${qty(currentRemaining)} kg.`
       );
       return;
@@ -253,7 +252,7 @@ export default function Milling() {
       sacks25 >= 0;
 
     if (!validSackCounts) {
-      setError(
+      toast.error(
         "The 50 kg and 25 kg sack counts must be non-negative whole numbers."
       );
       return;
@@ -269,7 +268,7 @@ export default function Milling() {
       broken < 0 ||
       rice + bran + broken > input
     ) {
-      setError(
+      toast.error(
         "Rice, bran, and broken rice outputs must be non-negative and their total cannot exceed dried input."
       );
       return;
@@ -307,7 +306,7 @@ export default function Milling() {
         }
       );
 
-      setSuccess(
+      toast.success(
         editing !== null
           ? "Milling session updated."
           : "Milling session created. Inventory is synced automatically when status is Completed."
@@ -317,7 +316,7 @@ export default function Milling() {
       setEditing(null);
       await load();
     } catch (e) {
-      setError(e.message || "Unable to save milling session.");
+      toast.error(e.message || "Unable to save milling session.");
     } finally {
       setSaving(false);
     }
@@ -333,17 +332,17 @@ export default function Milling() {
     }
 
     try {
-      setError("");
+      toast.error("Unable to process this request right now. Please try again.");
 
       await apiRequest(`mill/milling/${r.id}`, {
         method: "DELETE",
         token,
       });
 
-      setSuccess("Milling session deleted.");
+      toast.success("Milling session deleted.");
       await load();
     } catch (e) {
-      setError(e.message || "Unable to delete milling session.");
+      toast.error(e.message || "Unable to delete milling session.");
     }
   }
 
@@ -405,7 +404,7 @@ export default function Milling() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
+            <table className="w-full min-w-275 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
                   {[

@@ -215,7 +215,7 @@ export default function DataModule({
   function startCreate() {
     setEditing(null);
     setValues(emptyValues(fields));
-    setNotice("");
+    toast.notice("Notice updated.");
     setFormOpen(true);
   }
 
@@ -234,7 +234,7 @@ export default function DataModule({
       ),
     );
 
-    setNotice("");
+    toast.notice("Notice updated.");
     setFormOpen(true);
   }
 
@@ -266,7 +266,7 @@ export default function DataModule({
     event.preventDefault();
 
     setSaving(true);
-    setNotice("");
+    toast.notice("Notice updated.");
 
     const recordId = editing?.[primaryKey];
 
@@ -331,7 +331,7 @@ export default function DataModule({
       return;
     }
 
-    setNotice("");
+    toast.notice("Notice updated.");
 
     try {
       await apiRequest(
