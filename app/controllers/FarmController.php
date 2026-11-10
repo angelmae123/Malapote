@@ -115,7 +115,8 @@ public function palay_prediction()
         );
     }
 
-    // Get fertilizer totals for the selected planting cycle.
+    // Get fertilizer totals for supplementary information.
+    // These are NOT ML model features.
     $fertilizer_statement = $this->db->raw(
         "SELECT
             input_category,
@@ -143,31 +144,37 @@ public function palay_prediction()
         }
     }
 
-    // Prepare all four prediction features.
+    // The deployed ML model only accepts YEAR and AREA.
     $validated = [
         'year' => $year,
         'area_hectares' => (float) $area,
-        'npk_kg' => $npk_kg,
-        'other_kg' => $other_kg,
     ];
 
-    // FastAPI endpoint.
-    $ml_url = getenv('PALAY_ML_API_URL');
+    // Get deployed ML API base URL.
+    $ml_url = getenv('AGRI_ML_API_URL');
 
     if (!$ml_url) {
         if (getenv('APP_ENV') === 'production') {
             log_message(
                 'error',
-                'Palay ML prediction failed: PALAY_ML_API_URL is not configured.'
+                'Palay ML prediction failed: AGRI_ML_API_URL is not configured.'
             );
 
             $this->api->respond_error(
-                'The Palay prediction service is not configured. Set PALAY_ML_API_URL to the deployed ML API /predict endpoint.',
+                'The Palay prediction service is not configured.',
                 503
             );
         }
 
-        $ml_url = 'http://127.0.0.1:8001/predict';
+        // Local development fallback.
+        $ml_url = 'http://127.0.0.1:8001';
+    }
+
+    $ml_url = rtrim(trim($ml_url), '/');
+
+    // Allow either a base URL or a URL already ending in /predict.
+    if (substr($ml_url, -8) !== '/predict') {
+        $ml_url .= '/predict';
     }
 
     if (!function_exists('curl_init')) {
@@ -208,12 +215,13 @@ public function palay_prediction()
             'Accept: application/json',
         ],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 60,
     ]);
 
     $response_body = curl_exec($curl);
     $curl_error = curl_error($curl);
+
     $http_status = (int) curl_getinfo(
         $curl,
         CURLINFO_HTTP_CODE
@@ -261,6 +269,7 @@ public function palay_prediction()
         );
     }
 
+    // Validate ML prediction response.
     if (
         !isset(
             $ml_response['prediction_tonnes'],
@@ -278,12 +287,12 @@ public function palay_prediction()
         );
 
         $this->api->respond_error(
-            'The configured PALAY_ML_API_URL did not return a prediction. Set it to the deployed ML API /predict endpoint and redeploy the backend.',
+            'The Palay prediction service returned an unexpected response.',
             502
         );
     }
 
-    // Include planting details and fertilizer totals.
+    // Include planting details.
     $ml_response['planting_cycle'] = [
         'farm_planting_harvesting_id' => $cycle_id,
         'planting_date' => $planting_date,
@@ -292,6 +301,7 @@ public function palay_prediction()
         'rice_variety' => $planting['rice_variety'] ?? null,
     ];
 
+    // Include fertilizer totals as supplementary information only.
     $ml_response['fertilizer_totals'] = [
         'NPK_KG' => $npk_kg,
         'OTHER_KG' => $other_kg,
@@ -300,6 +310,7 @@ public function palay_prediction()
     // No database record is created or updated.
     $this->api->respond($ml_response, 200);
 }
+
 
     // =========================================================
     // FARM ACTIVITIES
