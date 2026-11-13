@@ -166,7 +166,7 @@ export default function AdminLandingPage() {
         {/* Footer */}
         <footer className="mt-12 border-t border-[#54ACBF]/20 pt-5 text-center sm:mt-16 sm:text-left">
           <p className="text-[10px] font-medium tracking-wide text-slate-500 sm:text-xs">
-            © {new Date().getFullYear()} Malapote Ricemill · AgriStock
+            © 2026 Malapote Ricemill · AgriStock
             Operations Portal
           </p>
         </footer>

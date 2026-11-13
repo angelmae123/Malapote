@@ -182,12 +182,12 @@ export default function ShopLandingPage() {
         </section>
 
         {/* Footer */}
-        <footer className="mt-12 border-t border-[#54ACBF]/20 pt-5 text-center sm:mt-16 sm:text-left">
-          <p className="text-[10px] font-medium tracking-wide text-slate-500 sm:text-xs">
-            © {new Date().getFullYear()} Malapote Ricemill ·
-            Harvest Today. Prosper Tomorrow.
-          </p>
-        </footer>
+<footer className="mt-12 border-t border-[#54ACBF]/20 pt-5 text-center sm:mt-16 sm:text-left">
+  <p className="text-[10px] font-medium tracking-wide text-slate-500 sm:text-xs">
+    © 2026 Malapote Ricemill · AgriStock
+    Operations Portal
+  </p>
+</footer>
       </div>
     </main>
   );
