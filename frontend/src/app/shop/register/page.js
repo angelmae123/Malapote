@@ -410,9 +410,9 @@ export default function CustomerRegisterPage() {
 
 
           {/* Footer */}
-          <footer className="mt-6 pb-2 text-center">
-            <p className="text-[10px] font-medium tracking-wide text-slate-400">
-              © {new Date().getFullYear()} Malapote Ricemill · AgriStock
+          <footer className="mt-12 border-t border-[#54ACBF]/20 pt-5 text-center sm:mt-16 sm:text-left">
+            <p className="text-[10px] font-medium tracking-wide text-slate-500 sm:text-xs">
+              © 2026 Malapote Ricemill · AgriStock Operations Portal
             </p>
           </footer>
         </div>
