@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,6 +19,9 @@ const STATUS_OPTIONS = ["Available", "Inactive"];
 
 const BACKEND_ORIGIN =
   process.env.NEXT_PUBLIC_BACKEND_ORIGIN || "http://127.0.0.1:3000";
+
+const inputClass =
+  "w-full rounded-xl border border-[#54ACBF]/30 bg-[#A7EBF2]/10 px-3.5 py-2.5 text-[12px] text-[#011C40] outline-none transition placeholder:text-[#26658C]/50 focus:border-[#26658C] focus:bg-white focus:ring-2 focus:ring-[#54ACBF]/15 disabled:cursor-not-allowed disabled:opacity-60";
 
 // RESPONSE HELPERS
 
@@ -55,7 +59,6 @@ function formatNumber(value) {
 }
 
 // MILL INVENTORY HELPERS
-// IMPORTANT: Use the actual database fields.
 
 function getInventoryStock(inventory) {
   return Number(inventory?.stock_quantity ?? 0);
@@ -68,7 +71,6 @@ function getInventorySacks(inventory) {
 function getInventorySackSize(inventory) {
   if (!inventory) return 0;
 
-  // Directly read sack_weight_kg from Mill Inventory.
   return Number(inventory.sack_weight_kg ?? 0);
 }
 
@@ -125,12 +127,14 @@ export default function ProductsPage() {
 
   const token = session?.accessToken;
   const fileInputRef = useRef(null);
+  const imagePreviewRef = useRef("");
 
   const [products, setProducts] = useState([]);
   const [inventories, setInventories] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pageError, setPageError] = useState("");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -144,10 +148,42 @@ export default function ProductsPage() {
   const [imagePreview, setImagePreview] = useState("");
   const [removeImage, setRemoveImage] = useState(false);
 
+  // IMAGE PREVIEW CLEANUP
+
+  const updateImagePreview = useCallback((value) => {
+    const previous = imagePreviewRef.current;
+
+    if (previous.startsWith("blob:")) {
+      URL.revokeObjectURL(previous);
+    }
+
+    imagePreviewRef.current = value;
+    setImagePreview(value);
+  }, []);
+
+  const resetImage = useCallback(() => {
+    updateImagePreview("");
+    setSelectedImage(null);
+    setRemoveImage(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [updateImagePreview]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewRef.current.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreviewRef.current);
+      }
+    };
+  }, []);
+
   // LOAD PRODUCTS AND INVENTORY
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setPageError("");
 
     try {
       const [productResponse, inventoryResponse] = await Promise.all([
@@ -158,7 +194,11 @@ export default function ProductsPage() {
       setProducts(getResponseData(productResponse));
       setInventories(getResponseData(inventoryResponse));
     } catch (err) {
-      toast.error(err.message || "Unable to load products and inventory.");
+      const message =
+        err.message || "Unable to load products and inventory.";
+
+      setPageError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -254,20 +294,6 @@ export default function ProductsPage() {
 
   // IMAGE HANDLING
 
-  function resetImage() {
-    if (imagePreview.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
-    }
-
-    setSelectedImage(null);
-    setImagePreview("");
-    setRemoveImage(false);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  }
-
   function handleImageChange(event) {
     const file = event.target.files?.[0];
 
@@ -291,14 +317,9 @@ export default function ProductsPage() {
       return;
     }
 
-    if (imagePreview.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
-    }
-
-    toast.error("Unable to process this request right now. Please try again.");
     setSelectedImage(file);
-    setImagePreview(URL.createObjectURL(file));
     setRemoveImage(false);
+    updateImagePreview(URL.createObjectURL(file));
   }
 
   function handleRemoveImage() {
@@ -315,14 +336,12 @@ export default function ProductsPage() {
     setEditingProduct(null);
     setForm(EMPTY_FORM);
     resetImage();
-    toast.error("Unable to process this request right now. Please try again.");
   }
 
   function openAddModal() {
     setEditingProduct(null);
     setForm(EMPTY_FORM);
     resetImage();
-    toast.error("Unable to process this request right now. Please try again.");
     setModalOpen(true);
   }
 
@@ -341,10 +360,9 @@ export default function ProductsPage() {
     resetImage();
 
     if (product.image) {
-      setImagePreview(getImageUrl(product.image));
+      updateImagePreview(getImageUrl(product.image));
     }
 
-    toast.error("Unable to process this request right now. Please try again.");
     setModalOpen(true);
   }
 
@@ -396,6 +414,7 @@ export default function ProductsPage() {
     formData.append("price", form.price);
     formData.append("description", form.description.trim());
     formData.append("status", form.status);
+
     formData.append(
       "image",
       editingProduct?.image && !removeImage ? editingProduct.image : ""
@@ -468,22 +487,22 @@ export default function ProductsPage() {
   // PAGE
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-800 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-[#F3F8FA] p-3 text-[#011C40] sm:p-5 lg:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
 
         {/* HEADER */}
 
-        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">
-              Sales Management
+            <p className="mb-1 text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+              SALES MANAGEMENT
             </p>
 
-            <h1 className="font-serif text-3xl font-semibold text-slate-900">
+            <h1 className="font-serif text-xl tracking-tight text-[#011C40] sm:text-2xl">
               Products
             </h1>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-1 max-w-2xl text-[12px] text-[#26658C]">
               Manage rice product listings, selling prices, and product images.
               Sack information and available stock are automatically retrieved
               from Mill Inventory.
@@ -493,7 +512,7 @@ export default function ProductsPage() {
           <button
             type="button"
             onClick={openAddModal}
-            className="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800"
+            className="rounded-xl bg-[#023859] px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#011C40]"
           >
             + Add Product
           </button>
@@ -501,39 +520,75 @@ export default function ProductsPage() {
 
         {/* SUMMARY */}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <SummaryCard
             label="Total Products"
             value={formatNumber(summary.total)}
+            icon="▤"
           />
 
           <SummaryCard
             label="Available Products"
             value={formatNumber(summary.available)}
-          />
-
-          <SummaryCard
-            label="Out of Stock"
-            value={formatNumber(summary.outOfStock)}
-          />
-
-          <SummaryCard
-            label="Inactive Products"
-            value={formatNumber(summary.inactive)}
+            icon="✓"
           />
         </section>
 
+        {/* PRODUCT BREAKDOWN */}
+
+        <section className="rounded-xl border border-[#54ACBF]/25 bg-[#A7EBF2]/15 p-4">
+          <div className="mb-3">
+            <h2 className="text-[12px] font-bold text-[#011C40]">
+              Product Status Overview
+            </h2>
+
+            <p className="mt-0.5 text-[10px] text-[#26658C]">
+              Current distribution of your product listings.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <BreakdownItem
+              label="Available"
+              value={summary.available}
+              color="text-emerald-700"
+            />
+
+            <BreakdownItem
+              label="Out of Stock"
+              value={summary.outOfStock}
+              color="text-red-700"
+            />
+
+            <BreakdownItem
+              label="Inactive"
+              value={summary.inactive}
+              color="text-[#26658C]"
+            />
+          </div>
+        </section>
+
+        {/* PAGE ERROR */}
+
+        {pageError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[11px] text-red-700">
+            {pageError}
+          </div>
+        )}
+
         {/* PRODUCTS TABLE */}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-[#54ACBF]/25 bg-white shadow-sm">
 
-          <div className="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
+          {/* TABLE HEADER */}
+
+          <div className="flex flex-col gap-3 border-b border-[#A7EBF2]/50 p-4 sm:px-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-base font-bold text-[#011C40]">
                 Product Listings
               </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-[11px] text-[#26658C]">
                 Sack details and available stock are linked directly to Mill Inventory.
               </p>
             </div>
@@ -544,13 +599,13 @@ export default function ProductsPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search products..."
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm outline-none focus:border-blue-800"
+                className={`${inputClass} sm:w-52`}
               />
 
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-800"
+                className={`${inputClass} sm:w-40`}
               >
                 <option value="All">All Status</option>
                 <option value="Available">Available</option>
@@ -562,41 +617,49 @@ export default function ProductsPage() {
                 type="button"
                 onClick={loadData}
                 disabled={loading}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-4 py-2 text-[11px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Refresh
+                {loading ? "Loading..." : "Refresh"}
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-275 text-left text-sm">
+          {/* TABLE */}
 
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1250px] text-left text-[11px]">
+
+              <thead className="bg-[#A7EBF2]/20 text-[10px] uppercase tracking-wider text-[#023859]">
                 <tr>
-                  <th className="px-5 py-4">Image</th>
-                  <th className="px-5 py-4">Product</th>
-                  <th className="px-5 py-4">Inventory Source</th>
-                  <th className="px-5 py-4">Category</th>
-                  <th className="px-5 py-4">Sack Size</th>
-                  <th className="px-5 py-4">Selling Price</th>
-                  <th className="px-5 py-4">Available Stock</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4 text-right">Actions</th>
+                  <th className="px-4 py-3">Image</th>
+                  <th className="px-4 py-3">Product</th>
+                  <th className="px-4 py-3">Inventory Source</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Sack Size</th>
+                  <th className="px-4 py-3">Selling Price</th>
+                  <th className="px-4 py-3">Available Stock</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#A7EBF2]/30">
 
                 {loading ? (
                   <tr>
-                    <td colSpan="9" className="px-5 py-12 text-center text-slate-500">
+                    <td
+                      colSpan="9"
+                      className="px-4 py-12 text-center text-[11px] text-[#26658C]"
+                    >
                       Loading products...
                     </td>
                   </tr>
                 ) : filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-5 py-12 text-center text-slate-500">
+                    <td
+                      colSpan="9"
+                      className="px-4 py-12 text-center text-[11px] text-[#26658C]"
+                    >
                       No products found.
                     </td>
                   </tr>
@@ -608,20 +671,20 @@ export default function ProductsPage() {
                     return (
                       <tr
                         key={product.id}
-                        className="transition hover:bg-slate-50"
+                        className="transition hover:bg-[#A7EBF2]/10"
                       >
 
                         {/* IMAGE */}
 
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           {product.image ? (
                             <img
                               src={getImageUrl(product.image)}
                               alt={product.product_name}
-                              className="h-14 w-14 rounded-xl border border-slate-200 object-cover"
+                              className="h-12 w-12 rounded-xl border border-[#54ACBF]/25 object-cover"
                             />
                           ) : (
-                            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-xs text-slate-400">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#54ACBF]/20 bg-[#A7EBF2]/20 text-[9px] text-[#26658C]">
                               No image
                             </div>
                           )}
@@ -629,13 +692,13 @@ export default function ProductsPage() {
 
                         {/* PRODUCT */}
 
-                        <td className="px-5 py-3">
-                          <p className="font-semibold text-slate-900">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-[#011C40]">
                             {product.product_name}
                           </p>
 
                           {product.description && (
-                            <p className="mt-1 max-w-50 truncate text-xs text-slate-500">
+                            <p className="mt-1 max-w-48 truncate text-[10px] text-[#26658C]">
                               {product.description}
                             </p>
                           )}
@@ -643,25 +706,25 @@ export default function ProductsPage() {
 
                         {/* INVENTORY SOURCE */}
 
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           {inventory ? (
                             <>
-                              <p className="font-medium text-slate-800">
-                                {inventory.item_name}
+                              <p className="font-semibold text-[#011C40]">
+                                {inventory.item_name || "—"}
                               </p>
 
                               {inventory.variety && (
-                                <p className="mt-1 text-xs text-slate-500">
+                                <p className="mt-1 text-[10px] text-[#26658C]">
                                   {inventory.variety}
                                 </p>
                               )}
 
-                              <p className="mt-1 text-xs text-blue-800">
+                              <p className="mt-1 text-[10px] font-semibold text-[#26658C]">
                                 Inventory #{getInventoryId(inventory)}
                               </p>
                             </>
                           ) : (
-                            <span className="text-xs text-red-600">
+                            <span className="text-[10px] font-semibold text-red-600">
                               Inventory not found
                             </span>
                           )}
@@ -669,32 +732,34 @@ export default function ProductsPage() {
 
                         {/* CATEGORY */}
 
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3 text-[#26658C]">
                           {product.category || "—"}
                         </td>
 
-                        {/* AUTOMATIC SACK SIZE */}
+                        {/* SACK SIZE */}
 
-                        <td className="px-5 py-3">
-                          <span className="inline-flex rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-900">
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded-lg border border-[#54ACBF]/20 bg-[#A7EBF2]/30 px-2.5 py-1.5 text-[10px] font-bold text-[#023859]">
                             {getInventoryDisplaySize(inventory)}
                           </span>
                         </td>
 
                         {/* PRICE */}
 
-                        <td className="px-5 py-3 font-semibold text-slate-900">
-                          {formatCurrency(product.price)}
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-[#011C40]">
+                            {formatCurrency(product.price)}
+                          </p>
 
-                          <p className="mt-1 text-xs font-normal text-slate-500">
+                          <p className="mt-1 text-[10px] text-[#26658C]">
                             {isLooseRice(inventory) ? "Per kg" : "Per sack"}
                           </p>
                         </td>
 
-                        {/* INVENTORY STOCK */}
+                        {/* STOCK */}
 
-                        <td className="px-5 py-3">
-                          <p className="font-semibold text-slate-800">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-[#011C40]">
                             {inventory
                               ? formatInventoryStock(inventory)
                               : "—"}
@@ -703,19 +768,18 @@ export default function ProductsPage() {
 
                         {/* STATUS */}
 
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           <StatusBadge status={status} />
                         </td>
 
                         {/* ACTIONS */}
 
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
-
                             <button
                               type="button"
                               onClick={() => openEditModal(product)}
-                              className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-900 hover:bg-blue-50"
+                              className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3 py-2 text-[10px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/60"
                             >
                               Edit
                             </button>
@@ -723,11 +787,10 @@ export default function ProductsPage() {
                             <button
                               type="button"
                               onClick={() => handleDelete(product)}
-                              className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-semibold text-red-700 transition hover:bg-red-100"
                             >
                               Delete
                             </button>
-
                           </div>
                         </td>
 
@@ -740,8 +803,12 @@ export default function ProductsPage() {
             </table>
           </div>
 
-          <div className="border-t border-slate-200 px-5 py-4 text-xs text-slate-500">
-            Showing {filteredProducts.length} of {products.length} products
+          {/* TABLE FOOTER */}
+
+          <div className="border-t border-[#A7EBF2]/40 bg-[#A7EBF2]/10 px-4 py-3">
+            <p className="text-[10px] text-[#26658C]">
+              Showing {filteredProducts.length} of {products.length} products
+            </p>
           </div>
 
         </section>
@@ -750,27 +817,34 @@ export default function ProductsPage() {
       {/* ADD / EDIT PRODUCT MODAL */}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#011C40]/60 p-3 backdrop-blur-sm sm:p-5">
 
-          <div className="flex max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#54ACBF]/30 bg-white shadow-2xl">
 
             {/* MODAL HEADER */}
 
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <div className="flex items-center justify-between border-b border-[#A7EBF2]/60 px-5 py-4 sm:px-6">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-900">
-                  Product Management
+                <p className="text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+                  PRODUCT MANAGEMENT
                 </p>
 
-                <h2 className="mt-1 font-serif text-xl font-semibold text-slate-900">
+                <h2 className="mt-1 text-lg font-bold text-[#011C40]">
                   {editingProduct ? "Edit Product" : "Add Product"}
                 </h2>
+
+                <p className="mt-0.5 text-[11px] text-[#26658C]">
+                  {editingProduct
+                    ? "Update the product listing details."
+                    : "Create a new product listing using Mill Inventory stock."}
+                </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-lg px-3 py-2 text-xl text-slate-500 hover:bg-slate-100"
+                disabled={saving}
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-xl text-[#26658C] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                 aria-label="Close modal"
               >
                 ×
@@ -782,24 +856,20 @@ export default function ProductsPage() {
               className="flex min-h-0 flex-1 flex-col"
             >
 
-              <div className="flex-1 space-y-5 overflow-y-auto p-6">
+              {/* MODAL CONTENT */}
 
-                {error && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                )}
+              <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
 
                 {/* PRODUCT IMAGE */}
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#023859]">
                     Product Image
                   </label>
 
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 
-                    <div className="flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50">
+                    <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#54ACBF]/40 bg-[#A7EBF2]/10">
                       {imagePreview ? (
                         <img
                           src={imagePreview}
@@ -807,8 +877,8 @@ export default function ProductsPage() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="text-center text-xs text-slate-400">
-                          <div className="mb-2 text-3xl">▧</div>
+                        <div className="text-center text-[10px] text-[#26658C]">
+                          <div className="mb-1 text-2xl">▧</div>
                           No image selected
                         </div>
                       )}
@@ -820,10 +890,10 @@ export default function ProductsPage() {
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
                         onChange={handleImageChange}
-                        className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-900 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-800"
+                        className="block w-full text-[11px] text-[#26658C] file:mr-3 file:rounded-lg file:border-0 file:bg-[#023859] file:px-3 file:py-2 file:text-[10px] file:font-semibold file:text-white hover:file:bg-[#011C40]"
                       />
 
-                      <p className="text-xs text-slate-500">
+                      <p className="text-[10px] text-[#26658C]">
                         JPG, PNG, or WEBP. Maximum file size: 5 MB.
                       </p>
 
@@ -831,7 +901,7 @@ export default function ProductsPage() {
                         <button
                           type="button"
                           onClick={handleRemoveImage}
-                          className="text-xs font-semibold text-red-600 hover:underline"
+                          className="text-[10px] font-semibold text-red-600 hover:underline"
                         >
                           Remove image
                         </button>
@@ -871,7 +941,6 @@ export default function ProductsPage() {
                   {/* LINKED MILL INVENTORY */}
 
                   <div className="sm:col-span-2">
-
                     <FormField label="Linked Mill Inventory" required>
                       <select
                         name="mill_inventory_id"
@@ -897,77 +966,74 @@ export default function ProductsPage() {
                             {` - ${formatInventoryStock(inventory)}`}
                           </option>
                         ))}
-
                       </select>
                     </FormField>
 
                     {inventories.length === 0 ? (
-                      <p className="mt-2 text-xs text-red-600">
+                      <p className="mt-2 text-[10px] text-red-600">
                         No Mill Inventory records available. Add an inventory
                         record first.
                       </p>
                     ) : (
-                      <p className="mt-2 text-xs text-slate-500">
+                      <p className="mt-2 text-[10px] text-[#26658C]">
                         Select an inventory record. Sack size, sack quantity,
                         and stock will automatically be retrieved.
                       </p>
                     )}
-
                   </div>
 
                   {/* AUTOMATIC INVENTORY INFORMATION */}
 
                   <div className="sm:col-span-2">
-
-                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                    <div className="rounded-xl border border-[#54ACBF]/25 bg-[#A7EBF2]/15 p-4">
 
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-[#023859]">
                             Mill Inventory Information
                           </p>
 
-                          <p className="mt-1 text-xs text-blue-700">
+                          <p className="mt-1 text-[10px] text-[#26658C]">
                             Automatically retrieved. Read-only.
                           </p>
                         </div>
 
-                        <span className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-blue-900">
+                        <span className="rounded-lg border border-[#54ACBF]/20 bg-white px-3 py-2 text-[10px] font-bold text-[#023859]">
                           {selectedInventory
                             ? getInventoryDisplaySize(selectedInventory)
                             : "No selection"}
                         </span>
                       </div>
 
-                      {selectedInventory && (
-                        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-blue-200 pt-3">
+                      {selectedInventory ? (
+                        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[#54ACBF]/20 pt-3">
 
                           <div>
-                            <p className="text-xs text-blue-700">
+                            <p className="text-[10px] text-[#26658C]">
                               Inventory Item
                             </p>
 
-                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                            <p className="mt-1 text-[11px] font-semibold text-[#011C40]">
                               {selectedInventory.item_name || "—"}
                             </p>
                           </div>
 
                           <div>
-                            <p className="text-xs text-blue-700">
+                            <p className="text-[10px] text-[#26658C]">
                               Rice Variety
                             </p>
 
-                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                            <p className="mt-1 text-[11px] font-semibold text-[#011C40]">
                               {selectedInventory.variety || "—"}
                             </p>
                           </div>
 
                           <div>
-                            <p className="text-xs text-blue-700">
+                            <p className="text-[10px] text-[#26658C]">
                               Sack Quantity
                             </p>
 
-                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                            <p className="mt-1 text-[11px] font-semibold text-[#011C40]">
                               {getInventorySackSize(selectedInventory) > 0
                                 ? `${formatNumber(getInventorySacks(selectedInventory))} sacks`
                                 : "Not applicable"}
@@ -975,43 +1041,40 @@ export default function ProductsPage() {
                           </div>
 
                           <div>
-                            <p className="text-xs text-blue-700">
+                            <p className="text-[10px] text-[#26658C]">
                               Sack Weight
                             </p>
 
-                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                            <p className="mt-1 text-[11px] font-semibold text-[#011C40]">
                               {getInventorySackSize(selectedInventory) > 0
                                 ? `${formatNumber(getInventorySackSize(selectedInventory))} kg per sack`
                                 : "Loose Rice"}
                             </p>
                           </div>
 
-                          <div className="col-span-2 border-t border-blue-200 pt-3">
-                            <p className="text-xs text-blue-700">
+                          <div className="col-span-2 border-t border-[#54ACBF]/20 pt-3">
+                            <p className="text-[10px] text-[#26658C]">
                               Current Available Stock
                             </p>
 
-                            <p className="mt-1 text-lg font-bold text-blue-900">
+                            <p className="mt-1 text-lg font-bold text-[#023859]">
                               {formatNumber(getInventoryStock(selectedInventory))} kg
                             </p>
 
-                            <p className="mt-1 text-xs text-blue-700">
+                            <p className="mt-1 text-[10px] text-[#26658C]">
                               Source: Mill Inventory
                             </p>
                           </div>
 
                         </div>
-                      )}
-
-                      {!selectedInventory && (
-                        <p className="mt-3 border-t border-blue-200 pt-3 text-xs text-blue-700">
+                      ) : (
+                        <p className="mt-3 border-t border-[#54ACBF]/20 pt-3 text-[10px] text-[#26658C]">
                           Select an inventory record to automatically
                           display its sack quantity, sack weight, and stock.
                         </p>
                       )}
 
                     </div>
-
                   </div>
 
                   {/* SELLING PRICE */}
@@ -1025,7 +1088,7 @@ export default function ProductsPage() {
                     required
                   >
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-[#26658C]">
                         ₱
                       </span>
 
@@ -1076,18 +1139,17 @@ export default function ProductsPage() {
                   </div>
 
                 </div>
-
               </div>
 
               {/* MODAL FOOTER */}
 
-              <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+              <div className="flex justify-end gap-2 border-t border-[#A7EBF2]/50 bg-white px-5 py-4 sm:px-6">
 
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  className="rounded-xl border border-[#54ACBF]/30 bg-white px-4 py-2.5 text-[11px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/20 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1095,7 +1157,7 @@ export default function ProductsPage() {
                 <button
                   type="submit"
                   disabled={saving || inventories.length === 0}
-                  className="rounded-xl bg-blue-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-[#023859] px-5 py-2.5 text-[11px] font-semibold text-white transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving
                     ? "Saving..."
@@ -1117,13 +1179,10 @@ export default function ProductsPage() {
 
 // REUSABLE COMPONENTS
 
-const inputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-800 focus:ring-2 focus:ring-blue-100";
-
 function FormField({ label, required, children }) {
   return (
     <div>
-      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700">
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#023859]">
         {label}
         {required && <span className="ml-1 text-red-500">*</span>}
       </label>
@@ -1133,15 +1192,35 @@ function FormField({ label, required, children }) {
   );
 }
 
-function SummaryCard({ label, value }) {
+function SummaryCard({ label, value, icon }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+    <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg font-bold text-[#26658C]">
+        {icon}
+      </div>
+
+      <div>
+        <p className="text-[11px] font-medium text-[#26658C]">
+          {label}
+        </p>
+
+        <p className="mt-0.5 text-xl font-bold text-[#011C40]">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BreakdownItem({ label, value, color }) {
+  return (
+    <div className="rounded-lg border border-[#54ACBF]/15 bg-white/80 px-3 py-2.5">
+      <p className="text-[10px] font-medium text-[#26658C]">
         {label}
       </p>
 
-      <p className="mt-3 text-2xl font-semibold text-slate-900">
-        {value}
+      <p className={`mt-1 text-lg font-bold ${color}`}>
+        {formatNumber(value)}
       </p>
     </div>
   );
@@ -1149,15 +1228,15 @@ function SummaryCard({ label, value }) {
 
 function StatusBadge({ status }) {
   const styles = {
-    Available: "bg-green-50 text-green-700",
-    "Out of Stock": "bg-red-50 text-red-700",
-    Inactive: "bg-slate-100 text-slate-600",
+    Available: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    "Out of Stock": "border-red-200 bg-red-50 text-red-700",
+    Inactive: "border-[#54ACBF]/20 bg-[#A7EBF2]/20 text-[#26658C]",
   };
 
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-        styles[status] || "bg-slate-100 text-slate-600"
+      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+        styles[status] || "border-slate-200 bg-slate-100 text-slate-600"
       }`}
     >
       {status || "Unknown"}

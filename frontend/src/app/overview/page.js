@@ -2,109 +2,210 @@
 
 import Link from "next/link";
 
+const navigationItems = [
+  {
+    title: "Activity Logs",
+    href: "/dashboard/farm/activity",
+    icon: "✳",
+    category: "Farm Operations",
+  },
+  {
+    title: "Planting & Harvest",
+    href: "/dashboard/farm/planting-harvesting",
+    icon: "🌾",
+    category: "Farm Operations",
+  },
+  {
+    title: "Drying",
+    href: "/dashboard/mill/production?tab=drying",
+    icon: "☀",
+    category: "Mill Operations",
+  },
+  {
+    title: "Milling",
+    href: "/dashboard/mill/production?tab=milling",
+    icon: "▦",
+    category: "Mill Operations",
+  },
+  {
+    title: "Palay Purchasing",
+    href: "/dashboard/mill/production?tab=purchasing",
+    icon: "◈",
+    category: "Mill Operations",
+  },
+  {
+    title: "Mill Inventory",
+    href: "/dashboard/mill/inventory",
+    icon: "▤",
+    category: "Mill Operations",
+  },
+  {
+    title: "Orders",
+    href: "/dashboard/sales/orders",
+    icon: "▧",
+    category: "Sales",
+  },
+  {
+    title: "Farmers & Workers",
+    href: "/dashboard/office/farmers-workers",
+    icon: "♧",
+    category: "Office Management",
+  },
+];
+
 export default function DashboardOverviewPage() {
   return (
-    <div className="space-y-8">
-      
-      {/* Welcome Banner */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+    <div className="space-y-6">
+
+      {/* WELCOME BANNER */}
+      <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-[#54ACBF]/30 bg-white p-6 shadow-sm md:flex-row md:items-center md:p-8">
         <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-blue-500 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+          <span className="rounded-full border border-[#54ACBF]/30 bg-[#A7EBF2]/30 px-3 py-1 text-xs font-bold uppercase tracking-widest text-[#26658C]">
             Malapote Ricemill System
           </span>
-          <h1 className="text-3xl font-serif font-normal text-slate-900 mt-3">
+
+          <h1 className="mt-3 text-2xl font-bold text-[#011C40] md:text-3xl">
             Welcome to your workspace.
           </h1>
-          <p className="text-slate-600 text-sm mt-1 max-w-xl">
-            Manage your harvest operations, inventory flow, milling processes, and office records seamlessly from one centralized platform.
+
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#26658C]">
+            Manage your harvest operations, inventory flow, milling processes,
+            and office records seamlessly from one centralized platform.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link 
-            href="/dashboard/mill/production?tab=purchasing" 
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm rounded-xl shadow-lg shadow-blue-600/20 transition"
-          >
-            New Palay Purchase
-          </Link>
-        </div>
+        <Link
+          href="/dashboard/mill/production?tab=purchasing"
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#26658C] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#26658C]/20 transition hover:bg-[#023859]"
+        >
+          <span className="text-lg">+</span>
+          New Palay Purchase
+        </Link>
       </div>
 
-      {/* Quick Summary Grid Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-sm mb-2">
-            <span>Farm Harvests</span>
-            <span className="text-blue-500 text-lg">✳</span>
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900">0.00 <span className="text-xs font-normal text-slate-500">bags</span></h3>
-          <p className="text-xs text-slate-500 mt-1">Logged for this season</p>
-        </div>
+      {/* QUICK SUMMARY GRID CARDS */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
-        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-sm mb-2">
-            <span>Mill Inventory</span>
-            <span className="text-blue-500 text-lg">▦</span>
+        {/* FARM HARVESTS */}
+        <Link
+          href="/dashboard/farm/planting-harvesting"
+          className="group rounded-2xl border border-[#54ACBF]/30 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-[#54ACBF] hover:shadow-md"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium text-[#26658C]">
+              Farm Harvests
+            </span>
+            <span className="text-xl text-[#54ACBF] transition group-hover:text-[#023859]">
+              ✳
+            </span>
           </div>
-          <h3 className="text-2xl font-bold text-slate-900">0 <span className="text-xs font-normal text-slate-500">stocks</span></h3>
-          <p className="text-xs text-slate-500 mt-1">Current milled rice ready</p>
-        </div>
 
-        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-sm mb-2">
-            <span>Active Orders</span>
-            <span className="text-blue-500 text-lg">▧</span>
+          <h3 className="text-2xl font-bold text-[#011C40]">
+            0.00 <span className="text-xs font-normal text-[#26658C]">bags</span>
+          </h3>
+
+          <p className="mt-1 text-xs text-[#54ACBF]">
+            Logged for this season
+          </p>
+        </Link>
+
+        {/* MILL INVENTORY */}
+        <Link
+          href="/dashboard/mill/inventory"
+          className="group rounded-2xl border border-[#54ACBF]/30 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-[#54ACBF] hover:shadow-md"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium text-[#26658C]">
+              Mill Inventory
+            </span>
+            <span className="text-xl text-[#54ACBF] transition group-hover:text-[#023859]">
+              ▦
+            </span>
           </div>
-          <h3 className="text-2xl font-bold text-slate-900">0</h3>
-          <p className="text-xs text-slate-500 mt-1">Pending processing</p>
-        </div>
 
-        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-sm mb-2">
-            <span>Workers On Duty</span>
-            <span className="text-blue-500 text-lg">♧</span>
+          <h3 className="text-2xl font-bold text-[#011C40]">
+            0 <span className="text-xs font-normal text-[#26658C]">stocks</span>
+          </h3>
+
+          <p className="mt-1 text-xs text-[#54ACBF]">
+            Current milled rice ready
+          </p>
+        </Link>
+
+        {/* ACTIVE ORDERS */}
+        <Link
+          href="/dashboard/sales/orders"
+          className="group rounded-2xl border border-[#54ACBF]/30 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-[#54ACBF] hover:shadow-md"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium text-[#26658C]">
+              Active Orders
+            </span>
+            <span className="text-xl text-[#54ACBF] transition group-hover:text-[#023859]">
+              ▧
+            </span>
           </div>
-          <h3 className="text-2xl font-bold text-slate-900">0</h3>
-          <p className="text-xs text-slate-500 mt-1">Office & field personnel</p>
-        </div>
 
+          <h3 className="text-2xl font-bold text-[#011C40]">0</h3>
+
+          <p className="mt-1 text-xs text-[#54ACBF]">
+            Pending processing
+          </p>
+        </Link>
+
+        {/* WORKERS ON DUTY */}
+        <Link
+          href="/dashboard/office/farmers-workers"
+          className="group rounded-2xl border border-[#54ACBF]/30 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-[#54ACBF] hover:shadow-md"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium text-[#26658C]">
+              Workers On Duty
+            </span>
+            <span className="text-xl text-[#54ACBF] transition group-hover:text-[#023859]">
+              ♧
+            </span>
+          </div>
+
+          <h3 className="text-2xl font-bold text-[#011C40]">0</h3>
+
+          <p className="mt-1 text-xs text-[#54ACBF]">
+            Office & field personnel
+          </p>
+        </Link>
       </div>
 
-      {/* Quick Access Sections / Modules */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Farm Section Preview */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-2">Farm Operations</h2>
-          <p className="text-slate-600 text-sm mb-4">Monitor crop activities, inventory stocks, and planting schedules.</p>
-          <div className="flex gap-2">
-            <Link href="/dashboard/farm/activity" className="text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">
-              Activity Logs
-            </Link>
-            <Link href="/dashboard/farm/planting-harvesting" className="text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">
-              Planting & Harvest
-            </Link>
-          </div>
+      {/* QUICK ACCESS NAVIGATION */}
+      <div className="rounded-2xl border border-[#54ACBF]/30 bg-white p-5 shadow-sm md:p-6">
+
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-[#011C40]">
+            Quick Access
+          </h2>
+
+          <p className="mt-1 text-sm text-[#26658C]">
+            Navigate quickly to the different modules of the system.
+          </p>
         </div>
 
-        {/* Mill Section Preview */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-2">Mill Operations</h2>
-          <p className="text-slate-600 text-sm mb-4">Track drying stages, milling yields, and palay purchasing records.</p>
-          <div className="flex gap-2">
-            <Link href="/dashboard/mill/production?tab=drying" className="text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">
-              Drying
-            </Link>
-            <Link href="/dashboard/mill/production?tab=milling" className="text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">
-              Milling
-            </Link>
-            <Link href="/dashboard/mill/production?tab=purchasing" className="text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 rounded-xl transition">
-              Palay Purchasing
-            </Link>
-          </div>
-        </div>
+        {/* EXACTLY TWO ROWS ON DESKTOP */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {navigationItems.map((item) => (
+            <Link
+              key={item.title}
+              href={item.href}
+              className="group flex min-h-[100px] flex-col items-center justify-center gap-2 rounded-xl border border-[#54ACBF]/30 bg-[#A7EBF2]/10 px-2 py-4 text-center transition duration-200 hover:-translate-y-0.5 hover:border-[#54ACBF] hover:bg-[#A7EBF2]/40 hover:shadow-sm"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#A7EBF2]/50 text-xl text-[#26658C] transition group-hover:bg-[#26658C] group-hover:text-white">
+                {item.icon}
+              </span>
 
+              <span className="text-xs font-semibold text-[#023859] transition group-hover:text-[#011C40] sm:text-sm">
+                {item.title}
+              </span>
+            </Link>
+          ))}
+        </div>
       </div>
 
     </div>

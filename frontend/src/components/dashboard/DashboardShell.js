@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../app/providers";
 import { apiRequest } from "../../lib/api";
 
@@ -15,26 +15,22 @@ const navigation = [
     section: "Farm",
     key: "farm",
     links: [
-      // { label: "Seasons", href: "/dashboard/farm/seasons", icon: "◷" },
-      { label: "Farm activity", href: "/dashboard/farm/activity", icon: "✳" },
-      { label: "Farm Inputs", href: "/dashboard/farm/farminput", icon: "✎" },
-      { label: "Farm inventory", href: "/dashboard/farm/inventory", icon: "▤" },
       {
         label: "Planting & harvest",
         href: "/dashboard/farm/planting-harvesting",
         icon: "⌁",
       },
+      { label: "Farm activity", href: "/dashboard/farm/activity", icon: "✳" },
+      { label: "Farm Inputs", href: "/dashboard/farm/farminput", icon: "✎" },
+      { label: "Farm inventory", href: "/dashboard/farm/inventory", icon: "▤" },
+
     ],
   },
   {
     section: "Mill",
     key: "mill",
     links: [
-      {
-        label: "Production",
-        href: "/dashboard/mill/production",
-        icon: "◉",
-      },
+      { label: "Production", href: "/dashboard/mill/production", icon: "◉" },
       { label: "Mill inventory", href: "/dashboard/mill/inventory", icon: "▦" },
     ],
   },
@@ -62,13 +58,23 @@ const navigation = [
   },
 ];
 
+const mobileIcons = {
+  Overview: "⌂",
+  Farm: "♧",
+  Mill: "◉",
+  Sales: "▧",
+  More: "•••",
+};
+
 function RiceMark() {
   return (
-    <span
-      className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px] border border-white/15 bg-white/10 text-white"
-      aria-hidden="true"
-    >
-      <svg className="h-7.25 w-7.25" viewBox="0 0 40 40" fill="none">
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#638ECB] text-white shadow-sm">
+      <svg
+        className="h-7 w-7"
+        viewBox="0 0 40 40"
+        fill="none"
+        aria-hidden="true"
+      >
         <path
           d="M20 33V14"
           stroke="currentColor"
@@ -100,16 +106,31 @@ function titleForPath(pathname) {
     .flatMap((group) => group.links)
     .find((link) => link.href === pathname);
 
-  return active?.label || "Dashboard";
+  if (active) return active.label;
+  if (pathname === "/dashboard/profile") return "My Profile";
+  if (pathname === "/dashboard/settings") return "Settings";
+
+  return "Dashboard";
+}
+
+function getActiveGroup(pathname) {
+  if (pathname === "/dashboard") return "Overview";
+
+  return pathname.split("/")[2]
+    ? pathname.split("/")[2].charAt(0).toUpperCase() +
+        pathname.split("/")[2].slice(1)
+    : "Overview";
 }
 
 export default function DashboardShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-
   const { session, ready, clearSession } = useAuth();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const profileRef = useRef(null);
 
   const isSuperAdmin = ["super_admin", "admin"].includes(
     session?.user?.role
@@ -126,14 +147,24 @@ export default function DashboardShell({ children }) {
   }, [isSuperAdmin, session]);
 
   const visibleNavigation = navigation.filter(
-    (group) =>
-      !group.key || allowedSections.includes(group.key)
+    (group) => !group.key || allowedSections.includes(group.key)
+  );
+
+  const mobileNavigation = visibleNavigation.filter((group) =>
+    ["Overview", "Farm", "Mill", "Sales"].includes(group.section)
   );
 
   const requiredSection = pathname.split("/")[2];
 
+  const isProfilePage = pathname === "/dashboard/profile";
+  const isSettingsPage = pathname === "/dashboard/settings";
+
   const accessDenied =
-    requiredSection && !allowedSections.includes(requiredSection);
+    requiredSection &&
+    !["profile", "settings"].includes(requiredSection) &&
+    !allowedSections.includes(requiredSection);
+
+  const activeGroup = getActiveGroup(pathname);
 
   useEffect(() => {
     if (ready && !session?.user) {
@@ -141,10 +172,43 @@ export default function DashboardShell({ children }) {
     }
   }, [ready, router, session]);
 
+  useEffect(() => {
+    setMenuOpen(false);
+    setProfileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    function handleOutsideClick(event) {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target)
+      ) {
+        setProfileOpen(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setProfileOpen(false);
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
   function signOut() {
     const refreshToken = session?.refreshToken;
 
     clearSession();
+    setMenuOpen(false);
+    setProfileOpen(false);
     router.replace("/login");
 
     if (refreshToken) {
@@ -168,194 +232,334 @@ export default function DashboardShell({ children }) {
     )
   ) {
     return (
-      <main className="flex min-h-screen items-center justify-center gap-3 bg-white text-xs text-slate-500">
-        <span className="inline-block h-4.25 w-4.25 animate-spin rounded-full border-2 border-slate-200 border-t-blue-900" />
+      <main className="flex min-h-screen items-center justify-center gap-3 bg-[#F0F3FA] text-xs text-[#395886]">
+        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#D5DEEF] border-t-[#395886]" />
         Preparing your workspace...
       </main>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-white">
+  const username = session.user.username || "Administrator";
+  const userInitial = username.slice(0, 1).toUpperCase();
 
-      {/* Mobile overlay */}
+  return (
+    <div className="min-h-screen bg-[#F0F3FA] text-[#395886]">
+      <style jsx global>{`
+        .hide-scrollbar {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
+      `}</style>
+
+      {/* MOBILE MENU OVERLAY */}
       {menuOpen && (
         <button
-          className="fixed inset-0 z-70 border-0 bg-slate-950/40 min-[801px]:hidden"
+          className="fixed inset-0 z-[70] bg-[#18263D]/35 backdrop-blur-[2px] min-[801px]:hidden"
           onClick={() => setMenuOpen(false)}
-          aria-label="Close the menu"
+          aria-label="Close navigation menu"
         />
       )}
 
-      {/* BLUE SIDEBAR */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-80 flex w-67.5 flex-col bg-blue-900 px-4.25 py-6.25 pb-4.5 transition-transform duration-200 min-[801px]:w-63 min-[801px]:translate-x-0 ${
-          menuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Logo */}
+      {/* DESKTOP SIDEBAR */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[252px] flex-col border-r border-[#D5DEEF] bg-[#F0F3FA] px-5 py-6 min-[801px]:flex">
+        {/* LOGO */}
         <Link
-          className="flex w-fit items-center gap-2.75 px-2 text-white"
+          className="flex shrink-0 items-center gap-3 px-2"
           href="/dashboard"
         >
           <RiceMark />
 
           <span>
-            <strong className="block text-[15px] tracking-[.15px]">
+            <strong className="block text-[16px] font-extrabold tracking-tight text-[#395886]">
               Malapote
             </strong>
-
-            <small className="mt-1 block text-[8px] font-bold tracking-[1.25px] text-blue-200">
+            <small className="mt-1 block text-[9px] font-bold tracking-[1.4px] text-[#638ECB]">
               RICEMILL · AGRISTOCK
             </small>
           </span>
         </Link>
 
-        <div className="mx-0.5 mb-5.5 mt-6.25 h-px bg-white/15" />
+        <div className="my-7 h-px shrink-0 bg-[#D5DEEF]" />
 
-        <div className="mb-3.5 px-2.5 text-[9px] font-extrabold tracking-[1.35px] text-blue-200">
+        <p className="mb-4 shrink-0 px-3 text-[9px] font-extrabold tracking-[1.5px] text-[#638ECB]">
           WORKSPACE
-        </div>
+        </p>
 
-        {/* Navigation */}
+        {/* DESKTOP NAVIGATION */}
         <nav
-          className="flex-1 overflow-y-auto pb-4"
+          className="hide-scrollbar min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pb-4"
           aria-label="Main navigation"
         >
           {visibleNavigation.map((group) => (
-            <div className="mb-4.75" key={group.section}>
-              <p className="mb-2 px-2.5 text-[9px] font-extrabold tracking-[1.35px] text-blue-200">
+            <div key={group.section}>
+              <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[1px] text-[#638ECB]">
                 {group.section}
               </p>
 
-              {group.links.map((link) => {
-                const active = pathname === link.href;
+              <div className="space-y-1">
+                {group.links.map((link) => {
+                  const active = pathname === link.href;
 
-                return (
-                  <Link
-                    aria-current={active ? "page" : undefined}
-                    className={`my-0.5 flex min-h-9.5 items-center gap-2.75 rounded-md px-2.5 text-[11px] font-semibold transition-colors ${
-                      active
-                        ? "bg-white font-extrabold text-blue-900"
-                        : "text-blue-50 hover:bg-blue-800 hover:text-white"
-                    }`}
-                    href={link.href}
-                    key={link.href}
-                    prefetch={true}
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span
-                      className={`inline-grid h-5 w-5 place-items-center text-sm ${
-                        active ? "text-blue-900" : "text-blue-200"
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      prefetch={true}
+                      aria-current={active ? "page" : undefined}
+                      className={`group flex min-h-[43px] items-center gap-3 rounded-xl px-3 text-[12px] transition-all duration-200 ${
+                        active
+                          ? "bg-[#395886] font-bold text-white shadow-md shadow-[#395886]/20"
+                          : "font-medium text-[#395886] hover:bg-[#D5DEEF] hover:text-[#263F63]"
                       }`}
-                      aria-hidden="true"
                     >
-                      {link.icon}
-                    </span>
+                      <span
+                        className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[17px] transition-colors ${
+                          active
+                            ? "bg-white/15 text-white"
+                            : "text-[#638ECB] group-hover:bg-white group-hover:text-[#395886]"
+                        }`}
+                      >
+                        {link.icon}
+                      </span>
 
-                    <span>{link.label}</span>
-                  </Link>
-                );
-              })}
+                      <span>{link.label}</span>
+
+                      {active && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#B1C9EF]" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </nav>
 
-        {/* Sidebar Footer */}
-        <div className="border-t border-white/15 pt-3.5">
-          <div className="flex items-center gap-2.5 px-2.5 py-[9px] pb-[13px]">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-green-300 shadow-[0_0_0_4px_rgb(255_255_255_/_10%)]" />
+        {/* DESKTOP FOOTER */}
+        <div className="shrink-0 border-t border-[#D5DEEF] pt-4">
+          <div className="flex items-center gap-3 rounded-xl border border-[#D5DEEF] bg-white p-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#D5DEEF] text-sm font-bold text-[#395886]">
+              M
+            </span>
 
-            <div>
-              <small className="mb-1 block text-[8px] font-extrabold tracking-[1px] text-blue-200">
+            <div className="min-w-0">
+              <small className="block text-[9px] font-bold tracking-wide text-[#638ECB]">
                 OPERATIONS
               </small>
-
-              <strong className="block text-[10px] text-white">
+              <strong className="block truncate text-[11px] text-[#395886]">
                 Malapote Ricemill
               </strong>
             </div>
-          </div>
 
-          <button
-            className="flex min-h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[11px] text-blue-50 transition-colors hover:bg-blue-800 hover:text-white"
-            onClick={signOut}
-          >
-            <span aria-hidden="true">↪</span>
-            Sign out
-          </button>
+            <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-[#638ECB]" />
+          </div>
         </div>
       </aside>
 
-      {/* WHITE CONTENT AREA */}
-      <div className="min-h-screen bg-white min-[801px]:ml-[252px]">
-
-        {/* WHITE HEADER */}
-        <header className="sticky top-0 z-20 flex h-[62px] items-center justify-start gap-3.5 border-b border-slate-200 bg-white px-5 min-[801px]:h-[70px] min-[801px]:justify-between min-[801px]:px-[clamp(25px,4vw,55px)]">
-
-          {/* Mobile Menu Button */}
-          <button
-            className="flex h-8 w-[31px] flex-col items-center justify-center gap-1 rounded-md border border-slate-200 bg-white min-[801px]:hidden"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Buksan ang menu"
-          >
-            <span className="h-[1.5px] w-[13px] rounded bg-slate-600" />
-            <span className="h-[1.5px] w-[13px] rounded bg-slate-600" />
-            <span className="h-[1.5px] w-[13px] rounded bg-slate-600" />
-          </button>
-
-          {/* Page Title */}
-          <div className="flex flex-1 items-center gap-1.5 text-[9px] text-slate-400 min-[801px]:flex-none min-[801px]:gap-2.5 min-[801px]:text-[11px]">
-            <span>Workspace</span>
-            <b className="font-normal text-slate-300">/</b>
-
-            <strong className="text-slate-800">
-              {titleForPath(pathname)}
-            </strong>
-          </div>
-
-          {/* User Information */}
-          <div className="flex items-center gap-[7px] min-[801px]:gap-2.5">
-            <div className="hidden text-right min-[561px]:block">
-              <strong className="block max-w-[115px] overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-slate-800 min-[801px]:max-w-none">
-                {session.user.username}
-              </strong>
-
-              <span className="mt-1 block text-[9px] capitalize text-slate-500">
-                {isSuperAdmin
-                  ? "Administrator"
-                  : `${session.user.section} administrator`}
-              </span>
+      {/* MOBILE MORE MENU */}
+      {menuOpen && (
+        <div className="hide-scrollbar fixed bottom-[105px] left-4 right-4 z-[80] max-h-[65vh] overflow-y-auto overscroll-contain rounded-[24px] border border-[#D5DEEF] bg-white p-5 shadow-2xl min-[801px]:hidden">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-extrabold text-[#395886]">
+                Navigation
+              </h2>
+              <p className="mt-1 text-[10px] text-[#638ECB]">
+                Malapote AgriStock Workspace
+              </p>
             </div>
 
-            <span
-              className="grid h-[31px] w-[31px] place-items-center rounded-full border border-blue-100 bg-blue-50 font-serif text-base text-blue-900 min-[801px]:h-[34px] min-[801px]:w-[34px]"
-              aria-hidden="true"
+            <button
+              onClick={() => setMenuOpen(false)}
+              className="grid h-8 w-8 place-items-center rounded-full bg-[#F0F3FA] text-[#395886] transition hover:bg-[#D5DEEF]"
+              aria-label="Close menu"
             >
-              {(session.user.username || "A")
-                .slice(0, 1)
-                .toUpperCase()}
-            </span>
+              ✕
+            </button>
+          </div>
+
+          {visibleNavigation.map((group) => (
+            <div key={group.section} className="mb-5">
+              <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[1.3px] text-[#638ECB]">
+                {group.section}
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                {group.links.map((link) => {
+                  const active = pathname === link.href;
+
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMenuOpen(false)}
+                      className={`flex min-h-[48px] items-center gap-2 rounded-xl px-3 text-[11px] font-semibold transition ${
+                        active
+                          ? "bg-[#395886] text-white"
+                          : "bg-[#F0F3FA] text-[#395886] hover:bg-[#D5DEEF]"
+                      }`}
+                    >
+                      <span className="text-base">{link.icon}</span>
+                      <span>{link.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* MAIN CONTENT */}
+      <div className="min-h-screen min-[801px]:ml-[252px]">
+        {/* HEADER */}
+        <header className="sticky top-0 z-20 flex h-[65px] items-center justify-between gap-3 border-b border-[#D5DEEF] bg-white/95 px-4 backdrop-blur-md min-[801px]:h-[72px] min-[801px]:px-9">
+          <div className="flex min-w-0 items-center gap-3">
+            {/* MOBILE LOGO */}
+            <Link
+              href="/dashboard"
+              className="flex shrink-0 items-center gap-2 min-[801px]:hidden"
+            >
+              <RiceMark />
+              <strong className="text-[13px] font-extrabold text-[#395886]">
+                Malapote
+              </strong>
+            </Link>
+
+            {/* BREADCRUMB */}
+            <div className="hidden items-center gap-2 text-[11px] text-[#638ECB] min-[801px]:flex">
+              <span>Workspace</span>
+              <span>/</span>
+              <strong className="text-[#395886]">
+                {titleForPath(pathname)}
+              </strong>
+            </div>
+
+            <div className="min-w-0 min-[801px]:hidden">
+              <p className="truncate text-[11px] font-bold text-[#395886]">
+                {titleForPath(pathname)}
+              </p>
+              <p className="text-[9px] text-[#638ECB]">
+                AgriStock Workspace
+              </p>
+            </div>
+          </div>
+
+          {/* PROFILE DROPDOWN */}
+          <div className="relative shrink-0" ref={profileRef}>
+            <button
+              type="button"
+              onClick={() => setProfileOpen((previous) => !previous)}
+              aria-expanded={profileOpen}
+              aria-haspopup="menu"
+              className="flex items-center gap-2 rounded-full p-1.5 transition hover:bg-[#F0F3FA] focus:outline-none focus:ring-2 focus:ring-[#8AAEE0]"
+            >
+              <div className="hidden text-right min-[561px]:block">
+                <strong className="block max-w-[150px] truncate text-[11px] text-[#395886]">
+                  {username}
+                </strong>
+
+                <span className="mt-1 block text-[9px] capitalize text-[#638ECB]">
+                  {isSuperAdmin
+                    ? "Administrator"
+                    : `${session.user.section} administrator`}
+                </span>
+              </div>
+
+              <span className="grid h-9 w-9 place-items-center rounded-full border-2 border-[#B1C9EF] bg-[#D5DEEF] text-sm font-extrabold text-[#395886]">
+                {userInitial}
+              </span>
+
+              <span className="hidden text-[10px] text-[#638ECB] min-[561px]:block">
+                {profileOpen ? "▲" : "▼"}
+              </span>
+            </button>
+
+            {profileOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-[calc(100%+10px)] z-[90] w-[225px] overflow-hidden rounded-2xl border border-[#D5DEEF] bg-white p-2 shadow-xl shadow-[#395886]/10"
+              >
+                <div className="border-b border-[#D5DEEF] px-3 py-3">
+                  <p className="truncate text-xs font-extrabold text-[#395886]">
+                    {username}
+                  </p>
+                  <p className="mt-1 text-[10px] capitalize text-[#638ECB]">
+                    {isSuperAdmin
+                      ? "Administrator"
+                      : `${session.user.section} administrator`}
+                  </p>
+                </div>
+
+                <Link
+                  href="/dashboard/profile"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                  className={`mt-2 flex min-h-[42px] items-center gap-3 rounded-xl px-3 text-xs font-semibold transition ${
+                    isProfilePage
+                      ? "bg-[#D5DEEF] text-[#395886]"
+                      : "text-[#395886] hover:bg-[#F0F3FA]"
+                  }`}
+                >
+                  <span className="text-base">♙</span>
+                  My Profile
+                </Link>
+
+                <Link
+                  href="/dashboard/settings"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                  className={`flex min-h-[42px] items-center gap-3 rounded-xl px-3 text-xs font-semibold transition ${
+                    isSettingsPage
+                      ? "bg-[#D5DEEF] text-[#395886]"
+                      : "text-[#395886] hover:bg-[#F0F3FA]"
+                  }`}
+                >
+                  <span className="text-base">⚙</span>
+                  Settings
+                </Link>
+
+                <div className="my-2 border-t border-[#D5DEEF]" />
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={signOut}
+                  className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-bold text-[#395886] transition hover:bg-[#D5DEEF]"
+                >
+                  <span className="text-base">↪</span>
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
-        {/* MAIN CONTENT - PURE WHITE */}
-        <main className="mx-auto min-h-[calc(100vh-62px)] max-w-[1500px] bg-white px-[14px] py-[25px] min-[561px]:px-5 min-[561px]:py-[29px] min-[801px]:min-h-[calc(100vh-70px)] min-[801px]:px-[clamp(25px,4vw,55px)] min-[801px]:pb-[55px] min-[801px]:pt-[37px]">
+        {/* PAGE CONTENT */}
+        <main className="mx-auto min-h-[calc(100vh-65px)] max-w-[1600px] px-4 pb-[115px] pt-6 min-[561px]:px-6 min-[801px]:min-h-[calc(100vh-72px)] min-[801px]:px-9 min-[801px]:pb-12 min-[801px]:pt-9">
           {accessDenied ? (
             <section className="flex min-h-[55vh] flex-col items-center justify-center text-center">
-              <span className="text-[38px] text-blue-900">⌑</span>
+              <span className="grid h-16 w-16 place-items-center rounded-2xl bg-[#D5DEEF] text-3xl text-[#395886]">
+                ⌑
+              </span>
 
-              <h1 className="mt-[15px] font-serif text-[27px] font-normal text-slate-800">
+              <h1 className="mt-5 text-xl font-bold text-[#395886]">
                 You do not have access to this section
               </h1>
 
-              <p className="my-2 mb-[18px] text-xs text-slate-500">
+              <p className="my-3 max-w-sm text-xs leading-6 text-[#638ECB]">
                 Your account is limited to the{" "}
                 {session.user.section} workspace.
               </p>
 
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-900 px-[18px] text-[13px] font-bold text-white transition hover:bg-blue-800"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#395886] px-5 text-xs font-bold text-white transition hover:bg-[#638ECB]"
                 href="/dashboard"
               >
                 Return to dashboard
@@ -366,6 +570,74 @@ export default function DashboardShell({ children }) {
           )}
         </main>
       </div>
+
+      {/* MOBILE FLOATING BOTTOM NAVIGATION */}
+      <nav
+        aria-label="Mobile main navigation"
+        className="fixed bottom-4 left-3 right-3 z-50 flex h-[68px] items-center justify-around rounded-[23px] border border-white/15 bg-[#395886] px-2 shadow-[0_10px_35px_rgba(57,88,134,0.28)] min-[801px]:hidden"
+      >
+        {mobileNavigation.map((group) => {
+          const active = activeGroup === group.section;
+          const firstLink = group.links[0];
+
+          return (
+            <Link
+              key={group.section}
+              href={firstLink.href}
+              aria-label={group.section}
+              aria-current={active ? "page" : undefined}
+              className="group flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1"
+            >
+              <span
+                className={`grid h-10 w-10 place-items-center rounded-full text-xl transition-all duration-300 ${
+                  active
+                    ? "-translate-y-3 bg-[#B1C9EF] text-[#395886] shadow-lg shadow-black/20"
+                    : "text-[#D5DEEF] group-hover:bg-white/10"
+                }`}
+              >
+                {mobileIcons[group.section]}
+              </span>
+
+              <span
+                className={`text-[8px] font-bold transition-all ${
+                  active
+                    ? "-mt-3 text-white"
+                    : "text-[#D5DEEF]/75"
+                }`}
+              >
+                {group.section === "Overview" ? "Home" : group.section}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* MORE BUTTON */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((previous) => !previous)}
+          aria-label="More navigation options"
+          aria-expanded={menuOpen}
+          className="group flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1"
+        >
+          <span
+            className={`grid h-10 w-10 place-items-center rounded-full text-xl transition-all duration-300 ${
+              menuOpen
+                ? "-translate-y-3 bg-[#B1C9EF] text-[#395886] shadow-lg shadow-black/20"
+                : "text-[#D5DEEF] group-hover:bg-white/10"
+            }`}
+          >
+            {mobileIcons.More}
+          </span>
+
+          <span
+            className={`text-[8px] font-bold ${
+              menuOpen ? "-mt-3 text-white" : "text-[#D5DEEF]/75"
+            }`}
+          >
+            More
+          </span>
+        </button>
+      </nav>
     </div>
   );
 }

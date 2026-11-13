@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,10 +20,10 @@ const EMPTY_FORM = {
   status: "Pending",
 };
 
-const inputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-800 focus:ring-2 focus:ring-blue-100";
-
 const STATUS_OPTIONS = ["Pending", "Released"];
+
+const inputClass =
+  "w-full rounded-xl border border-[#54ACBF]/30 bg-[#A7EBF2]/10 px-3.5 py-2.5 text-[12px] text-[#011C40] outline-none transition placeholder:text-[#26658C]/50 focus:border-[#26658C] focus:bg-white focus:ring-2 focus:ring-[#54ACBF]/15";
 
 function getResponseData(response) {
   if (Array.isArray(response)) return response;
@@ -76,34 +77,13 @@ function formatPeriod(month, year) {
   );
 }
 
-function SummaryCard({ label, value, description }) {
-  return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
-      <div className="flex min-w-0 items-center justify-between gap-2">
-        <p className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-500">
-          {label}
-        </p>
-
-        <p className="shrink-0 text-base font-semibold text-slate-900">
-          {value}
-        </p>
-      </div>
-
-      <p className="mt-1 truncate text-[10px] text-slate-400">
-        {description}
-      </p>
-    </div>
-  );
-}
-
 function FormField({ label, required, children }) {
   return (
     <div>
-      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700">
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#023859]">
         {label}
         {required && <span className="ml-1 text-red-500">*</span>}
       </label>
-
       {children}
     </div>
   );
@@ -111,14 +91,14 @@ function FormField({ label, required, children }) {
 
 function StatusBadge({ status }) {
   const styles = {
-    Released: "bg-green-100 text-green-700",
-    Pending: "bg-amber-100 text-amber-700",
+    Released: "border-[#54ACBF]/30 bg-[#A7EBF2]/40 text-[#023859]",
+    Pending: "border-amber-200 bg-amber-50 text-amber-700",
   };
 
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-        styles[status] || "bg-slate-100 text-slate-600"
+      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold ${
+        styles[status] || "border-slate-200 bg-slate-100 text-slate-600"
       }`}
     >
       {status || "—"}
@@ -127,18 +107,52 @@ function StatusBadge({ status }) {
 }
 
 function PeriodBadge({ status }) {
-  const isOpen = status === "Open";
+  const styles =
+    status === "Open"
+      ? "border-[#54ACBF]/30 bg-[#A7EBF2]/40 text-[#023859]"
+      : status === "Closed"
+        ? "border-slate-200 bg-slate-100 text-slate-600"
+        : "border-amber-200 bg-amber-50 text-amber-700";
 
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-        isOpen
-          ? "bg-green-100 text-green-700"
-          : "bg-slate-100 text-slate-600"
-      }`}
+      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold ${styles}`}
     >
       {status || "Unassigned"}
     </span>
+  );
+}
+
+function SummaryCard({ label, value, description, icon }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-[#023859]">
+        <span className="text-lg">{icon}</span>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-medium text-[#26658C]">{label}</p>
+        <p className="mt-0.5 truncate text-xl font-bold text-[#011C40]">
+          {value}
+        </p>
+        <p className="mt-0.5 truncate text-[10px] text-[#26658C]/70">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BreakdownItem({ label, value, valueClass = "text-[#011C40]" }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#26658C]">
+        {label}
+      </p>
+      <p className={`mt-1 truncate text-sm font-bold ${valueClass}`}>
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -155,6 +169,7 @@ export default function PayrollPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -176,8 +191,6 @@ export default function PayrollPage() {
     setLoading(true);
 
     try {
-      // Correct backend route:
-      // api/office/payroll-current-period
       const currentPeriodResponse = await apiRequest(
         "office/payroll-current-period",
         { token }
@@ -258,22 +271,16 @@ export default function PayrollPage() {
     isCurrentPeriodSelected && currentPeriod?.status === "Open";
 
   const hasUnassignedRecords = records.some(
-    (record) =>
-      !record.payroll_period_id ||
-      record.payroll_period_id === null
+    (record) => !record.payroll_period_id
   );
 
   // =========================================================
-  // FILTER RECORDS BY SELECTED MONTH
+  // FILTER RECORDS BY SELECTED PERIOD
   // =========================================================
 
   const periodRecords = useMemo(() => {
     if (isUnassignedView) {
-      return records.filter(
-        (record) =>
-          !record.payroll_period_id ||
-          record.payroll_period_id === null
-      );
+      return records.filter((record) => !record.payroll_period_id);
     }
 
     if (!selectedPeriodId) return [];
@@ -301,7 +308,7 @@ export default function PayrollPage() {
   }, [periodRecords, search, statusFilter]);
 
   // =========================================================
-  // MONTHLY SUMMARY
+  // PAYROLL SUMMARY
   // =========================================================
 
   const summary = useMemo(() => {
@@ -309,8 +316,7 @@ export default function PayrollPage() {
       (sum, record) =>
         sum +
         Number(
-          record.gross ??
-            calculateGross(record.rate, record.days)
+          record.gross ?? calculateGross(record.rate, record.days)
         ),
       0
     );
@@ -348,8 +354,13 @@ export default function PayrollPage() {
   // FORM COMPUTATION
   // =========================================================
 
-  const selectedWorker = workers.find(
-    (worker) => String(worker.id) === String(form.farmers_workers_id)
+  const selectedWorker = useMemo(
+    () =>
+      workers.find(
+        (worker) =>
+          String(worker.id) === String(form.farmers_workers_id)
+      ),
+    [workers, form.farmers_workers_id]
   );
 
   const previewGross = calculateGross(form.rate, form.days);
@@ -373,22 +384,15 @@ export default function PayrollPage() {
     }
 
     setEditingRecord(null);
-
     setForm({
       ...EMPTY_FORM,
       payroll_id: generatePayrollCode(),
     });
-
-    toast.error("Unable to process this request right now. Please try again.");
-    toast.notice("Notice updated.");
     setModalOpen(true);
   }
 
   function openEditModal(record) {
-    if (
-      !record.payroll_period_id ||
-      record.period_status !== "Open"
-    ) {
+    if (!record.payroll_period_id || record.period_status !== "Open") {
       toast.error(
         "This payroll record cannot be edited because its period is closed or unassigned."
       );
@@ -412,8 +416,6 @@ export default function PayrollPage() {
         : "Pending",
     });
 
-    toast.error("Unable to process this request right now. Please try again.");
-    toast.notice("Notice updated.");
     setModalOpen(true);
   }
 
@@ -423,7 +425,6 @@ export default function PayrollPage() {
     setModalOpen(false);
     setEditingRecord(null);
     setForm({ ...EMPTY_FORM });
-    toast.error("Unable to process this request right now. Please try again.");
   }
 
   function handleChange(event) {
@@ -530,6 +531,15 @@ export default function PayrollPage() {
       return;
     }
 
+    if (
+      editingRecord &&
+      (!editingRecord.payroll_period_id ||
+        editingRecord.period_status !== "Open")
+    ) {
+      toast.error("This payroll period is closed or unassigned.");
+      return;
+    }
+
     const payload = {
       payroll_id: form.payroll_id,
       farmers_workers_id: Number(worker.id),
@@ -547,14 +557,11 @@ export default function PayrollPage() {
 
     try {
       if (editingRecord) {
-        await apiRequest(
-          `office/payroll/${editingRecord.id}`,
-          {
-            method: "PUT",
-            token,
-            body: payload,
-          }
-        );
+        await apiRequest(`office/payroll/${editingRecord.id}`, {
+          method: "PUT",
+          token,
+          body: payload,
+        });
 
         toast.success("Payroll record updated successfully.");
       } else {
@@ -584,10 +591,7 @@ export default function PayrollPage() {
   // =========================================================
 
   async function handleDelete(record) {
-    if (
-      !record.payroll_period_id ||
-      record.period_status !== "Open"
-    ) {
+    if (!record.payroll_period_id || record.period_status !== "Open") {
       toast.error(
         "This payroll record cannot be deleted because its period is closed or unassigned."
       );
@@ -600,6 +604,8 @@ export default function PayrollPage() {
 
     if (!confirmed) return;
 
+    setDeletingId(record.id);
+
     try {
       await apiRequest(`office/payroll/${record.id}`, {
         method: "DELETE",
@@ -610,6 +616,8 @@ export default function PayrollPage() {
       await loadData();
     } catch (err) {
       toast.error(err.message || "Unable to delete payroll record.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -636,20 +644,20 @@ export default function PayrollPage() {
     : selectedPeriod?.status || "—";
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-800 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-[#F3F8FA] p-3 text-[#011C40] sm:p-5 lg:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
         {/* HEADER */}
-        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">
-              Office Management
+            <p className="mb-1 text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+              OFFICE MANAGEMENT
             </p>
 
-            <h1 className="font-serif text-3xl font-semibold text-slate-900">
+            <h1 className="font-serif text-xl tracking-tight text-[#011C40] sm:text-2xl">
               Payroll
             </h1>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-1 text-[12px] text-[#26658C]">
               Manage monthly farmer and worker payroll records.
             </p>
           </div>
@@ -658,17 +666,17 @@ export default function PayrollPage() {
             type="button"
             onClick={openAddModal}
             disabled={loading || !token || !canAddPayroll}
-            className="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-[#023859] px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-40"
           >
             + Add Payroll
           </button>
         </header>
 
-        {/* MONTHLY PERIOD SELECTOR */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        {/* PAYROLL PERIOD */}
+        <section className="rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="w-full lg:max-w-sm">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-600">
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#023859]">
                 Payroll Month
               </label>
 
@@ -678,7 +686,6 @@ export default function PayrollPage() {
                   setSelectedPeriodId(event.target.value);
                   setSearch("");
                   setStatusFilter("All");
-                  toast.error("Unable to process this request right now. Please try again.");
                 }}
                 disabled={loading}
                 className={inputClass}
@@ -702,22 +709,20 @@ export default function PayrollPage() {
               </select>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-end gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#26658C]">
                   Selected Period
                 </p>
-
-                <p className="mt-1 font-semibold text-slate-900">
+                <p className="mt-1 text-[13px] font-bold text-[#011C40]">
                   {selectedPeriodLabel}
                 </p>
               </div>
 
-              <div className="ml-0 sm:ml-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#26658C]">
                   Period Status
                 </p>
-
                 <div className="mt-1">
                   <PeriodBadge status={selectedPeriodStatus} />
                 </div>
@@ -737,7 +742,7 @@ export default function PayrollPage() {
                   !currentPeriod?.id ||
                   isCurrentPeriodSelected
                 }
-                className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3.5 py-2 text-[11px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Current Month
               </button>
@@ -745,7 +750,7 @@ export default function PayrollPage() {
           </div>
 
           {!canAddPayroll && !isUnassignedView && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
               {selectedPeriod?.status === "Closed"
                 ? "This payroll period is closed. You can view its records, but adding, editing, and deleting are disabled."
                 : "Payroll can only be added to the current month's Open period."}
@@ -753,7 +758,7 @@ export default function PayrollPage() {
           )}
 
           {isUnassignedView && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
               These records do not have an assigned monthly payroll period.
               They are displayed separately and cannot be edited or deleted
               through this page.
@@ -761,91 +766,77 @@ export default function PayrollPage() {
           )}
         </section>
 
-{/* PAYROLL SUMMARY - ALL IN ONE BOX */}
-<section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-  <div className="grid grid-cols-7 gap-2">
+        {/* PAYROLL SUMMARY */}
+        <section className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <SummaryCard
+              label="Total Payroll Records"
+              value={formatNumber(summary.total)}
+              description="Records for the selected period"
+              icon="▤"
+            />
 
-    {/* TOTAL RECORDS */}
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-3">
-      <p className="truncate text-[9px] font-bold uppercase text-slate-500">
-        Total Records
-      </p>
-      <p className="mt-1 truncate text-lg font-semibold text-slate-900">
-        {summary.total}
-      </p>
-    </div>
+            <SummaryCard
+              label="Total Net Pay"
+              value={formatCurrency(summary.totalNet)}
+              description="Total amount after advances"
+              icon="₱"
+            />
+          </div>
 
-    {/* PENDING */}
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-3">
-      <p className="truncate text-[9px] font-bold uppercase text-slate-500">
-        Pending
-      </p>
-      <p className="mt-1 truncate text-lg font-semibold text-amber-700">
-        {summary.pending}
-      </p>
-    </div>
+          {/* PAYROLL BREAKDOWN */}
+          <div className="rounded-xl border border-[#54ACBF]/25 bg-[#A7EBF2]/15 p-4">
+            <div className="mb-3">
+              <h3 className="text-[12px] font-bold text-[#011C40]">
+                Payroll Breakdown
+              </h3>
+              <p className="mt-0.5 text-[10px] text-[#26658C]">
+                Summary of payroll status and payment amounts.
+              </p>
+            </div>
 
-    {/* RELEASED */}
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-3">
-      <p className="truncate text-[9px] font-bold uppercase text-slate-500">
-        Released
-      </p>
-      <p className="mt-1 truncate text-lg font-semibold text-green-700">
-        {summary.released}
-      </p>
-    </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+              <BreakdownItem
+                label="Pending"
+                value={summary.pending}
+                valueClass="text-amber-700"
+              />
 
-    {/* TOTAL NET PAY */}
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-3">
-      <p className="truncate text-[9px] font-bold uppercase text-slate-500">
-        Total Net Pay
-      </p>
-      <p className="mt-1 truncate text-sm font-semibold text-blue-900">
-        {formatCurrency(summary.totalNet)}
-      </p>
-    </div>
+              <BreakdownItem
+                label="Released"
+                value={summary.released}
+                valueClass="text-[#26658C]"
+              />
 
-    {/* TOTAL GROSS PAY */}
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-3">
-      <p className="truncate text-[9px] font-bold uppercase text-slate-500">
-        Gross Pay
-      </p>
-      <p className="mt-1 truncate text-sm font-semibold text-slate-900">
-        {formatCurrency(summary.totalGross)}
-      </p>
-    </div>
+              <BreakdownItem
+                label="Gross Pay"
+                value={formatCurrency(summary.totalGross)}
+              />
 
-    {/* TOTAL ADVANCES */}
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-3">
-      <p className="truncate text-[9px] font-bold uppercase text-slate-500">
-        Advances
-      </p>
-      <p className="mt-1 truncate text-sm font-semibold text-amber-700">
-        {formatCurrency(summary.totalAdvance)}
-      </p>
-    </div>
+              <BreakdownItem
+                label="Total Advances"
+                value={formatCurrency(summary.totalAdvance)}
+                valueClass="text-amber-700"
+              />
 
-    {/* NET PAY */}
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-3">
-      <p className="truncate text-[9px] font-bold uppercase text-slate-500">
-        Net Pay
-      </p>
-      <p className="mt-1 truncate text-sm font-semibold text-blue-900">
-        {formatCurrency(summary.totalNet)}
-      </p>
-    </div>
+              <BreakdownItem
+                label="Net Pay"
+                value={formatCurrency(summary.totalNet)}
+                valueClass="text-[#023859]"
+              />
+            </div>
+          </div>
+        </section>
 
-  </div>
-</section>
         {/* PAYROLL TABLE */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
+        <section className="overflow-hidden rounded-2xl border border-[#54ACBF]/25 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-[#A7EBF2]/50 p-4 sm:px-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-base font-bold text-[#011C40]">
                 Payroll Records
               </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-[11px] text-[#26658C]">
                 {selectedPeriodLabel} payroll entries
               </p>
             </div>
@@ -856,13 +847,13 @@ export default function PayrollPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search payroll code or worker..."
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm outline-none focus:border-blue-800"
+                className={`${inputClass} sm:w-64`}
               />
 
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm outline-none focus:border-blue-800"
+                className={inputClass}
               >
                 <option value="All">All Status</option>
                 <option value="Pending">Pending</option>
@@ -873,7 +864,7 @@ export default function PayrollPage() {
                 type="button"
                 onClick={loadData}
                 disabled={loading}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3.5 py-2 text-[11px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/50 disabled:opacity-50"
               >
                 {loading ? "Refreshing..." : "Refresh"}
               </button>
@@ -881,28 +872,28 @@ export default function PayrollPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-300 text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+            <table className="w-full min-w-[1100px] text-left text-[11px]">
+              <thead className="bg-[#A7EBF2]/20 text-[10px] uppercase tracking-wider text-[#023859]">
                 <tr>
-                  <th className="px-5 py-4">Payroll Code</th>
-                  <th className="px-5 py-4">Worker</th>
-                  <th className="px-5 py-4">Employment Type</th>
-                  <th className="px-5 py-4">Days Worked</th>
-                  <th className="px-5 py-4">Gross Pay</th>
-                  <th className="px-5 py-4">Advance</th>
-                  <th className="px-5 py-4">Net Pay</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Period</th>
-                  <th className="px-5 py-4 text-right">Actions</th>
+                  <th className="px-4 py-3.5">Payroll Code</th>
+                  <th className="px-4 py-3.5">Worker</th>
+                  <th className="px-4 py-3.5">Employment Type</th>
+                  <th className="px-4 py-3.5">Days Worked</th>
+                  <th className="px-4 py-3.5">Gross Pay</th>
+                  <th className="px-4 py-3.5">Advance</th>
+                  <th className="px-4 py-3.5">Net Pay</th>
+                  <th className="px-4 py-3.5">Status</th>
+                  <th className="px-4 py-3.5">Period</th>
+                  <th className="px-4 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#A7EBF2]/30">
                 {loading ? (
                   <tr>
                     <td
                       colSpan="10"
-                      className="px-5 py-12 text-center text-slate-500"
+                      className="px-5 py-12 text-center text-[#26658C]"
                     >
                       Loading payroll records...
                     </td>
@@ -910,11 +901,11 @@ export default function PayrollPage() {
                 ) : filteredRecords.length === 0 ? (
                   <tr>
                     <td colSpan="10" className="px-5 py-12 text-center">
-                      <p className="font-medium text-slate-600">
+                      <p className="font-semibold text-[#023859]">
                         No payroll records found.
                       </p>
 
-                      <p className="mt-1 text-xs text-slate-400">
+                      <p className="mt-1 text-[10px] text-[#26658C]">
                         {isUnassignedView
                           ? "There are no unassigned payroll records."
                           : "No payroll entries have been added for this month yet."}
@@ -944,51 +935,51 @@ export default function PayrollPage() {
                     return (
                       <tr
                         key={record.id}
-                        className="transition hover:bg-slate-50"
+                        className="transition hover:bg-[#A7EBF2]/10"
                       >
-                        <td className="px-5 py-4 font-semibold text-slate-900">
+                        <td className="px-4 py-3.5 font-bold text-[#011C40]">
                           {record.payroll_id || "—"}
                         </td>
 
-                        <td className="px-5 py-4">
-                          <p className="font-semibold text-slate-800">
+                        <td className="px-4 py-3.5">
+                          <p className="font-semibold text-[#011C40]">
                             {record.worker_name || "—"}
                           </p>
 
-                          <p className="mt-1 text-xs text-slate-400">
+                          <p className="mt-1 text-[10px] text-[#26658C]/70">
                             ID: {record.farmers_workers_id || "—"}
                           </p>
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-3.5 text-[#26658C]">
                           {record.employment_type || "—"}
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-3.5 text-[#26658C]">
                           {formatNumber(record.days)}
                         </td>
 
-                        <td className="px-5 py-4 font-medium">
+                        <td className="px-4 py-3.5 font-medium text-[#011C40]">
                           {formatCurrency(gross)}
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-3.5 text-[#26658C]">
                           {formatCurrency(record.advance)}
                         </td>
 
-                        <td className="px-5 py-4 font-semibold text-blue-900">
+                        <td className="px-4 py-3.5 font-bold text-[#023859]">
                           {formatCurrency(net)}
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-3.5">
                           <StatusBadge status={record.status} />
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-3.5">
                           <PeriodBadge status={record.period_status} />
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-3.5">
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
@@ -999,7 +990,7 @@ export default function PayrollPage() {
                                   ? "Edit payroll"
                                   : "This payroll period is closed or unassigned"
                               }
-                              className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-900 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3 py-2 text-[10px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/60 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               Edit
                             </button>
@@ -1007,15 +998,20 @@ export default function PayrollPage() {
                             <button
                               type="button"
                               onClick={() => handleDelete(record)}
-                              disabled={!canManageRecord}
+                              disabled={
+                                !canManageRecord ||
+                                deletingId === record.id
+                              }
                               title={
                                 canManageRecord
                                   ? "Delete payroll"
                                   : "This payroll period is closed or unassigned"
                               }
-                              className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              Delete
+                              {deletingId === record.id
+                                ? "Deleting..."
+                                : "Delete"}
                             </button>
                           </div>
                         </td>
@@ -1027,27 +1023,29 @@ export default function PayrollPage() {
             </table>
           </div>
 
-          <div className="border-t border-slate-200 px-5 py-4 text-xs text-slate-500">
-            Showing {filteredRecords.length} of {periodRecords.length} payroll records
+          <div className="border-t border-[#A7EBF2]/40 bg-[#A7EBF2]/10 px-4 py-3 text-[10px] text-[#26658C]">
+            Showing {filteredRecords.length} of {periodRecords.length} payroll
+            records
           </div>
         </section>
       </div>
 
       {/* ADD / EDIT MODAL */}
       {modalOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
-          <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#011C40]/60 p-3 backdrop-blur-sm sm:p-5">
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#54ACBF]/30 bg-white shadow-2xl">
+            {/* MODAL HEADER */}
+            <div className="flex items-center justify-between border-b border-[#A7EBF2]/60 px-5 py-4 sm:px-6">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-900">
-                  Office Management
+                <p className="text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+                  OFFICE MANAGEMENT
                 </p>
 
-                <h2 className="mt-1 font-serif text-xl font-semibold text-slate-900">
+                <h2 className="mt-1 text-lg font-bold text-[#011C40]">
                   {editingRecord ? "Edit Payroll" : "Add Payroll"}
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-[11px] text-[#26658C]">
                   {formatPeriod(
                     editingRecord?.period_month ??
                       currentPeriod?.period_month,
@@ -1061,29 +1059,24 @@ export default function PayrollPage() {
                 type="button"
                 onClick={closeModal}
                 disabled={saving}
-                className="rounded-lg px-3 py-2 text-xl text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-lg text-[#26658C] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
               >
                 ×
               </button>
             </div>
 
+            {/* MODAL FORM */}
             <form
               onSubmit={handleSubmit}
               className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="flex-1 space-y-5 overflow-y-auto p-6">
-                {error && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                )}
-
+              <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField label="Payroll Code" required>
                     <input
                       value={form.payroll_id || ""}
                       readOnly
-                      className={`${inputClass} cursor-not-allowed bg-slate-100 font-semibold text-slate-600`}
+                      className={`${inputClass} cursor-not-allowed bg-[#A7EBF2]/20 font-semibold text-[#26658C]`}
                     />
                   </FormField>
 
@@ -1095,9 +1088,7 @@ export default function PayrollPage() {
                       required
                       className={inputClass}
                     >
-                      <option value="">
-                        Select a farmer / worker
-                      </option>
+                      <option value="">Select a farmer / worker</option>
 
                       {editingRecord &&
                         form.farmers_workers_id &&
@@ -1123,7 +1114,7 @@ export default function PayrollPage() {
                       ))}
                     </select>
 
-                    <p className="mt-1.5 text-xs text-slate-500">
+                    <p className="mt-1.5 text-[10px] text-[#26658C]">
                       Select an existing record from Farmers & Workers.
                     </p>
                   </FormField>
@@ -1138,7 +1129,7 @@ export default function PayrollPage() {
                       readOnly
                       required
                       placeholder="Select a farmer / worker"
-                      className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-600`}
+                      className={`${inputClass} cursor-not-allowed bg-[#A7EBF2]/20 text-[#26658C]`}
                     />
                   </FormField>
 
@@ -1208,36 +1199,42 @@ export default function PayrollPage() {
                   </FormField>
                 </div>
 
-                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                  <h3 className="text-sm font-semibold text-blue-900">
+                {/* PAYROLL COMPUTATION */}
+                <div className="rounded-xl border border-[#54ACBF]/25 bg-[#A7EBF2]/15 p-4">
+                  <h3 className="text-[12px] font-bold text-[#011C40]">
                     Payroll Computation
                   </h3>
 
+                  <p className="mt-0.5 text-[10px] text-[#26658C]">
+                    Automatic computation based on rate, days worked, and
+                    advance.
+                  </p>
+
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#26658C]">
                         Gross Pay
                       </p>
 
-                      <p className="mt-1 text-lg font-semibold text-slate-900">
+                      <p className="mt-1 text-lg font-bold text-[#011C40]">
                         {formatCurrency(previewGross)}
                       </p>
 
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-[10px] text-[#26658C]">
                         Daily rate × days worked
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#26658C]">
                         Net Pay
                       </p>
 
-                      <p className="mt-1 text-lg font-semibold text-blue-900">
+                      <p className="mt-1 text-lg font-bold text-[#023859]">
                         {formatCurrency(previewNet)}
                       </p>
 
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-[10px] text-[#26658C]">
                         Gross pay − advance
                       </p>
                     </div>
@@ -1245,19 +1242,20 @@ export default function PayrollPage() {
                 </div>
 
                 {!workers.length && !loading && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
                     No Farmers & Workers records are available. Add a
                     farmer or worker first before creating payroll.
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+              {/* MODAL FOOTER */}
+              <div className="flex justify-end gap-2 border-t border-[#A7EBF2]/50 bg-white px-5 py-4 sm:px-6">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                  className="rounded-xl border border-[#54ACBF]/30 bg-white px-4 py-2.5 text-[11px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/20 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1272,7 +1270,7 @@ export default function PayrollPage() {
                     workers.length === 0 ||
                     (!editingRecord && !canAddPayroll)
                   }
-                  className="rounded-xl bg-blue-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-[#023859] px-5 py-2.5 text-[11px] font-semibold text-white transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving
                     ? "Saving..."

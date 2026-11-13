@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
 import { toast } from "react-toastify";
@@ -9,6 +10,14 @@ import {
   getHistoryYears,
   matchesSeasonHistory,
 } from "../../../../lib/seasonHistory";
+
+const COLORS = {
+  light: "#A7EBF2",
+  teal: "#54ACBF",
+  blue: "#26658C",
+  deep: "#023859",
+  navy: "#011C40",
+};
 
 const initialForm = {
   record_code: "",
@@ -25,12 +34,9 @@ const initialForm = {
   status: "Planned",
 };
 
-// FIX: Added missing inputClass definition.
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-900 focus:bg-white focus:ring-2 focus:ring-blue-100";
+  "w-full rounded-xl border border-[#54ACBF]/30 bg-[#A7EBF2]/10 px-3.5 py-2.5 text-[12px] text-[#011C40] outline-none transition placeholder:text-slate-400 focus:border-[#26658C] focus:bg-white focus:ring-2 focus:ring-[#54ACBF]/15";
 
-// Generate a code according to the current planting/harvesting status.
-// Planned and Growing records use PLANTING; Harvested records use HARVESTING.
 const getRecordCodePrefix = (status) =>
   status === "Harvested" ? "HARVESTING" : "PLANTING";
 
@@ -114,36 +120,35 @@ function getSeasonLabel(season, date) {
         ? "Dry Season"
         : season.season_name;
 
-  return seasonYear
-    ? `${seasonLabel} ${seasonYear}`
-    : seasonLabel;
+  return seasonYear ? `${seasonLabel} ${seasonYear}` : seasonLabel;
 }
 
 function getStatusStyle(status) {
   switch (status) {
     case "Planned":
-      return "bg-amber-50 text-amber-700";
-
+      return "border-amber-200 bg-amber-50 text-amber-700";
     case "Growing":
-      return "bg-blue-50 text-blue-700";
-
+      return "border-[#54ACBF]/30 bg-[#A7EBF2]/30 text-[#023859]";
     case "Harvested":
-      return "bg-green-50 text-green-700";
-
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
     default:
-      return "bg-slate-100 text-slate-600";
+      return "border-slate-200 bg-slate-100 text-slate-600";
   }
 }
 
-function FormField({ label, required, children }) {
+function FormField({ label, required, children, hint }) {
   return (
     <div>
-      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700">
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#023859]">
         {label}
         {required && <span className="ml-1 text-red-500">*</span>}
       </label>
 
       {children}
+
+      {hint && (
+        <p className="mt-1.5 text-[11px] text-slate-400">{hint}</p>
+      )}
     </div>
   );
 }
@@ -166,30 +171,58 @@ export default function PlantingHarvesting() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const selectedSeason = getSeasonForDate(
-    seasons,
-    formData.planting_date
+  const selectedSeason = useMemo(
+    () => getSeasonForDate(seasons, formData.planting_date),
+    [seasons, formData.planting_date]
   );
 
-  const historyFilters = {
-    search: historySearch,
-    type: historyType,
-    year: historyYear,
-  };
-
-  const filteredRecords = records.filter((record) =>
-    matchesSeasonHistory(
-      record,
-      seasons,
-      historyFilters,
-      "season"
-    )
+  const historyFilters = useMemo(
+    () => ({
+      search: historySearch,
+      type: historyType,
+      year: historyYear,
+    }),
+    [historySearch, historyType, historyYear]
   );
 
-  const historyYears = getHistoryYears(
-    records,
-    seasons,
-    "season"
+  const filteredRecords = useMemo(
+    () =>
+      records.filter((record) =>
+        matchesSeasonHistory(record, seasons, historyFilters, "season")
+      ),
+    [records, seasons, historyFilters]
+  );
+
+  const historyYears = useMemo(
+    () => getHistoryYears(records, seasons, "season"),
+    [records, seasons]
+  );
+
+  const totalHarvested = useMemo(
+    () => records.filter((record) => record.status === "Harvested").length,
+    [records]
+  );
+
+  const totalArea = useMemo(
+    () =>
+      records.reduce(
+        (total, record) => total + (Number(record.area_hectares) || 0),
+        0
+      ),
+    [records]
+  );
+
+  const totalYield = useMemo(
+    () =>
+      records.reduce(
+        (total, record) =>
+          total +
+          (record.status === "Harvested"
+            ? Number(record.harvested_yield) || 0
+            : 0),
+        0
+      ),
+    [records]
   );
 
   const loadData = useCallback(async () => {
@@ -221,7 +254,6 @@ export default function PlantingHarvesting() {
 
   useEffect(() => {
     const timer = window.setTimeout(loadData, 0);
-
     return () => window.clearTimeout(timer);
   }, [loadData]);
 
@@ -229,10 +261,7 @@ export default function PlantingHarvesting() {
     const { name, value } = event.target;
 
     setFormData((previous) => {
-      const updated = {
-        ...previous,
-        [name]: value,
-      };
+      const updated = { ...previous, [name]: value };
 
       if (name === "planting_date") {
         updated.season = getSeasonLabel(
@@ -242,8 +271,6 @@ export default function PlantingHarvesting() {
       }
 
       if (name === "status") {
-        // Change the code prefix when the record changes between
-        // a planting record (Planned/Growing) and a harvesting record.
         if (previous.status !== value) {
           updated.record_code = generateRecordCode(value);
         }
@@ -265,8 +292,10 @@ export default function PlantingHarvesting() {
   };
 
   const handleAdd = () => {
-    const newForm = { ...initialForm };
-    newForm.record_code = generateRecordCode(newForm.status);
+    const newForm = {
+      ...initialForm,
+      record_code: generateRecordCode(initialForm.status),
+    };
 
     setFormData(newForm);
     setEditingId(null);
@@ -277,6 +306,7 @@ export default function PlantingHarvesting() {
     const expectedPrefix = getRecordCodePrefix(record.status);
     const currentCode = String(record.record_code || "");
     const currentPrefix = currentCode.split("-")[0];
+
     const recordCode =
       currentCode && currentPrefix === expectedPrefix
         ? currentCode
@@ -286,33 +316,22 @@ export default function PlantingHarvesting() {
       record_code: recordCode,
       season: record.season ?? "",
       field_name: record.field_name ?? "",
-
       area_hectares:
         record.area_hectares !== null &&
         record.area_hectares !== undefined
           ? String(record.area_hectares)
           : "",
-
       crop: record.crop ?? "Palay",
       rice_variety: record.rice_variety ?? "",
       method: record.method ?? "",
-
-      planting_date: String(
-        record.planting_date || ""
-      ).slice(0, 10),
-
+      planting_date: String(record.planting_date || "").slice(0, 10),
       expected_harvest_date: String(
         record.expected_harvest_date || ""
       ).slice(0, 10),
-
       actual_harvest_date: String(
         record.actual_harvest_date || ""
       ).slice(0, 10),
-
-      harvested_yield: String(
-        record.harvested_yield ?? "0"
-      ),
-
+      harvested_yield: String(record.harvested_yield ?? "0"),
       status: record.status ?? "Planned",
     });
 
@@ -348,9 +367,7 @@ export default function PlantingHarvesting() {
     const area = Number(formData.area_hectares);
 
     if (!Number.isFinite(area) || area <= 0) {
-      toast.error(
-        "Please enter a valid area greater than zero hectares."
-      );
+      toast.error("Please enter a valid area greater than zero hectares.");
       return;
     }
 
@@ -371,10 +388,7 @@ export default function PlantingHarvesting() {
 
     const harvestedYield = Number(formData.harvested_yield);
 
-    if (
-      !Number.isFinite(harvestedYield) ||
-      harvestedYield < 0
-    ) {
+    if (!Number.isFinite(harvestedYield) || harvestedYield < 0) {
       toast.error("Please enter a valid harvested yield.");
       return;
     }
@@ -409,45 +423,27 @@ export default function PlantingHarvesting() {
       return;
     }
 
-    if (
-      formData.status === "Harvested" &&
-      harvestedYield <= 0
-    ) {
-      toast.error(
-        "Harvested yield must be greater than zero."
-      );
+    if (formData.status === "Harvested" && harvestedYield <= 0) {
+      toast.error("Harvested yield must be greater than zero.");
       return;
     }
 
     const payload = {
       record_code: formData.record_code.trim(),
-
-      season: getSeasonLabel(
-        selectedSeason,
-        formData.planting_date
-      ),
-
+      season: getSeasonLabel(selectedSeason, formData.planting_date),
       field_name: formData.field_name.trim(),
       area_hectares: area,
       crop: formData.crop.trim(),
       rice_variety: formData.rice_variety.trim(),
       method: formData.method.trim(),
-
       planting_date: formData.planting_date,
-
-      expected_harvest_date:
-        formData.expected_harvest_date || null,
-
+      expected_harvest_date: formData.expected_harvest_date || null,
       actual_harvest_date:
         formData.status === "Harvested"
           ? formData.actual_harvest_date
           : null,
-
       harvested_yield:
-        formData.status === "Harvested"
-          ? harvestedYield
-          : 0,
-
+        formData.status === "Harvested" ? harvestedYield : 0,
       status: formData.status,
     };
 
@@ -526,21 +522,21 @@ export default function PlantingHarvesting() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-800 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-[#F3F8FA] p-3 text-[#011C40] sm:p-5 lg:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
 
         {/* PAGE HEADER */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">
-              Farm Management
+            <p className="mb-1 text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+              FARM MANAGEMENT
             </p>
 
-            <h1 className="font-serif text-3xl font-semibold text-slate-900">
+            <h1 className="text-xl font-serif tracking-tight text-[#011C40] sm:text-2xl">
               Planting & Harvesting
             </h1>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-[12px] text-[#26658C]">
               Track planting schedules, crop progress, and harvest results.
             </p>
           </div>
@@ -548,23 +544,84 @@ export default function PlantingHarvesting() {
           <button
             type="button"
             onClick={handleAdd}
-            className="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-800"
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-[#023859] px-4 py-2.5 text-[12px] font-semibold text-white shadow-sm transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto"
           >
-            + Add Planting Record
+            <span className="text-base leading-none">+</span>
+            Add Planting Record
           </button>
-        </div>
+        </header>
+
+        {/* SUMMARY CARDS */}
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg">
+              🌱
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-[#26658C]">
+                Total Records
+              </p>
+              <p className="mt-0.5 text-xl font-bold text-[#011C40]">
+                {loading ? "..." : records.length}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg">
+              🌾
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-[#26658C]">
+                Harvested Records
+              </p>
+              <p className="mt-0.5 text-xl font-bold text-[#011C40]">
+                {loading ? "..." : totalHarvested}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg">
+              📐
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-[#26658C]">
+                Total Planted Area
+              </p>
+              <p className="mt-0.5 text-xl font-bold text-[#011C40]">
+                {loading ? "..." : `${formatNumber(totalArea)} ha`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg">
+              📦
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-[#26658C]">
+                Total Harvested Yield
+              </p>
+              <p className="mt-0.5 text-xl font-bold text-[#011C40]">
+                {loading ? "..." : `${formatNumber(totalYield)} tons`}
+              </p>
+            </div>
+          </div>
+        </section>
 
         {/* DATA COLLECTION INFORMATION */}
-        <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+        <section className="rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex items-start gap-3">
-            <div className="text-xl">🌾</div>
-
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-xl">
+              🌾
+            </div>
             <div>
-              <h2 className="text-sm font-semibold text-blue-900">
+              <h2 className="text-[13px] font-bold text-[#023859]">
                 Planting and Harvest Data
               </h2>
-
-              <p className="mt-1 text-sm leading-relaxed text-blue-800">
+              <p className="mt-1 text-[11px] leading-relaxed text-[#26658C]">
                 Record the planted area, rice variety, planting date,
                 and actual harvest results. These records will help
                 build historical data for future harvest prediction.
@@ -576,7 +633,7 @@ export default function PlantingHarvesting() {
         {/* ADD / EDIT MODAL */}
         {showForm && (
           <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-[#011C40]/60 p-3 backdrop-blur-sm sm:p-5"
             onMouseDown={(event) => {
               if (
                 event.target === event.currentTarget &&
@@ -590,25 +647,23 @@ export default function PlantingHarvesting() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="planting-modal-title"
-              className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+              className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[#54ACBF]/30 bg-white shadow-2xl"
             >
               {/* MODAL HEADER */}
-              <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
+              <div className="flex items-center justify-between gap-4 border-b border-[#A7EBF2]/60 px-5 py-4 sm:px-6">
                 <div>
-                  <p className="mb-1 text-xs font-bold uppercase tracking-widest text-blue-900">
-                    Farm Management
+                  <p className="mb-1 text-[9px] font-extrabold tracking-[1.3px] text-[#54ACBF]">
+                    FARM MANAGEMENT
                   </p>
-
                   <h2
                     id="planting-modal-title"
-                    className="font-serif text-xl font-semibold text-slate-900"
+                    className="text-lg font-bold text-[#011C40]"
                   >
                     {editingId !== null
                       ? "Edit Planting Record"
                       : "Add Planting Record"}
                   </h2>
-
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-[11px] text-[#26658C]">
                     Enter the planting and harvest information.
                   </p>
                 </div>
@@ -618,14 +673,14 @@ export default function PlantingHarvesting() {
                   onClick={resetForm}
                   disabled={saving}
                   aria-label="Close modal"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xl text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-xl text-[#26658C] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                 >
                   ×
                 </button>
               </div>
 
               {/* MODAL BODY */}
-              <div className="overflow-y-auto px-5 py-6 sm:px-7">
+              <div className="overflow-y-auto px-5 py-5 sm:px-6">
                 <form
                   id="planting-form"
                   onSubmit={handleSubmit}
@@ -633,13 +688,20 @@ export default function PlantingHarvesting() {
                 >
                   {/* PLANTING INFORMATION */}
                   <div>
-                    <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-blue-900">
-                      Planting Information
-                    </h3>
+                    <div className="mb-4 border-b border-[#A7EBF2]/50 pb-2">
+                      <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-[#023859]">
+                        Planting Information
+                      </h3>
+                      <p className="mt-1 text-[10px] text-[#26658C]">
+                        Basic details about the planted field and crop.
+                      </p>
+                    </div>
 
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
-                      <FormField label="Record Code">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <FormField
+                        label="Record Code"
+                        hint="Automatically generated: PLANTING for Planned/Growing and HARVESTING for Harvested records."
+                      >
                         <input
                           type="text"
                           name="record_code"
@@ -649,18 +711,14 @@ export default function PlantingHarvesting() {
                           disabled
                           className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`}
                         />
-                        <p className="mt-2 text-xs text-slate-400">
-                          Automatically generated: PLANTING for Planned/Growing
-                          and HARVESTING for Harvested records.
-                        </p>
                       </FormField>
 
                       <FormField label="Season (Automatic)">
                         <output
                           aria-live="polite"
-                          className={`flex min-h-12 w-full items-center rounded-xl border px-4 py-3 text-sm ${
+                          className={`flex min-h-[40px] w-full items-center rounded-xl border px-3.5 py-2.5 text-[12px] ${
                             selectedSeason
-                              ? "border-blue-200 bg-blue-50 font-semibold text-blue-900"
+                              ? "border-[#54ACBF]/40 bg-[#A7EBF2]/20 font-semibold text-[#023859]"
                               : "border-slate-200 bg-slate-50 text-slate-500"
                           }`}
                         >
@@ -677,9 +735,8 @@ export default function PlantingHarvesting() {
                         </output>
 
                         {seasons.length === 0 && (
-                          <p className="mt-2 text-xs text-amber-700">
-                            No season records were returned. Check your
-                            seasons database and API.
+                          <p className="mt-1.5 text-[11px] text-amber-700">
+                            No season records were returned. Check your seasons database and API.
                           </p>
                         )}
                       </FormField>
@@ -697,7 +754,11 @@ export default function PlantingHarvesting() {
                         />
                       </FormField>
 
-                      <FormField label="Area (Hectares)" required>
+                      <FormField
+                        label="Area (Hectares)"
+                        required
+                        hint="Enter the actual planted area in hectares."
+                      >
                         <input
                           type="number"
                           name="area_hectares"
@@ -710,10 +771,6 @@ export default function PlantingHarvesting() {
                           placeholder="e.g. 2.50"
                           className={inputClass}
                         />
-
-                        <p className="mt-2 text-xs text-slate-400">
-                          Enter the actual planted area in hectares.
-                        </p>
                       </FormField>
 
                       <FormField label="Crop" required>
@@ -729,7 +786,11 @@ export default function PlantingHarvesting() {
                         />
                       </FormField>
 
-                      <FormField label="Rice Variety" required>
+                      <FormField
+                        label="Rice Variety"
+                        required
+                        hint="Enter the exact rice variety planted in this field."
+                      >
                         <input
                           type="text"
                           name="rice_variety"
@@ -740,10 +801,6 @@ export default function PlantingHarvesting() {
                           placeholder="e.g. NSIC Rc 222"
                           className={inputClass}
                         />
-
-                        <p className="mt-2 text-xs text-slate-400">
-                          Enter the exact rice variety planted in this field.
-                        </p>
                       </FormField>
 
                       <FormField label="Planting Method">
@@ -803,19 +860,17 @@ export default function PlantingHarvesting() {
 
                   {/* HARVEST INFORMATION */}
                   {formData.status === "Harvested" ? (
-                    <div className="rounded-2xl border border-green-200 bg-green-50/50 p-5">
-                      <div className="mb-4">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-green-800">
+                    <div className="rounded-xl border border-[#54ACBF]/30 bg-[#A7EBF2]/10 p-4 sm:p-5">
+                      <div className="mb-4 border-b border-[#54ACBF]/20 pb-3">
+                        <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-[#023859]">
                           Actual Harvest Information
                         </h3>
-
-                        <p className="mt-1 text-xs text-slate-500">
-                          Enter the actual harvest date and final
-                          harvested yield.
+                        <p className="mt-1 text-[11px] text-[#26658C]">
+                          Enter the actual harvest date and final harvested yield.
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <FormField label="Actual Harvest Date" required>
                           <input
                             type="date"
@@ -843,22 +898,19 @@ export default function PlantingHarvesting() {
                         </FormField>
                       </div>
 
-                      <p className="mt-4 text-xs leading-relaxed text-green-800">
-                        Only actual harvest results should be recorded
-                        here. These values will become part of the
-                        historical production data.
+                      <p className="mt-4 text-[11px] leading-relaxed text-[#26658C]">
+                        Only actual harvest results should be recorded here.
+                        These values will become part of the historical production data.
                       </p>
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                      <p className="text-sm font-medium text-slate-700">
+                    <div className="rounded-xl border border-dashed border-[#54ACBF]/40 bg-[#A7EBF2]/10 p-4">
+                      <p className="text-[12px] font-semibold text-[#023859]">
                         Harvest details are not required yet.
                       </p>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        Actual harvest date and harvested yield can be
-                        recorded when the planting status changes to
-                        Harvested.
+                      <p className="mt-1 text-[11px] text-[#26658C]">
+                        Actual harvest date and harvested yield can be recorded
+                        when the planting status changes to Harvested.
                       </p>
                     </div>
                   )}
@@ -866,12 +918,12 @@ export default function PlantingHarvesting() {
               </div>
 
               {/* MODAL FOOTER */}
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+              <div className="flex flex-col-reverse gap-2 border-t border-[#A7EBF2]/50 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
                 <button
                   type="button"
                   onClick={resetForm}
                   disabled={saving}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+                  className="rounded-xl border border-[#54ACBF]/40 px-5 py-2.5 text-[12px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/20 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -880,7 +932,7 @@ export default function PlantingHarvesting() {
                   type="submit"
                   form="planting-form"
                   disabled={saving}
-                  className="rounded-xl bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-50"
+                  className="rounded-xl bg-[#023859] px-6 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving
                     ? "Saving..."
@@ -894,15 +946,15 @@ export default function PlantingHarvesting() {
         )}
 
         {/* RECORDS TABLE */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-2 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <section className="overflow-hidden rounded-xl border border-[#54ACBF]/25 bg-white shadow-sm">
+          {/* TABLE HEADER */}
+          <div className="flex flex-col gap-3 border-b border-[#A7EBF2]/50 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-base font-bold text-[#011C40]">
                 Planting & Harvesting Records
               </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Total records: {filteredRecords.length}
+              <p className="mt-1 text-[11px] text-[#26658C]">
+                Showing {filteredRecords.length} of {records.length} records
               </p>
             </div>
 
@@ -910,130 +962,144 @@ export default function PlantingHarvesting() {
               type="button"
               onClick={loadData}
               disabled={loading}
-              className="text-sm font-semibold text-blue-900 transition hover:text-blue-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 self-start rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3.5 py-2 text-[11px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/50 disabled:opacity-50 sm:self-auto"
             >
+              <span className="text-sm">↻</span>
               {loading ? "Refreshing..." : "Refresh"}
             </button>
           </div>
 
-          <SeasonHistoryFilters
-            search={historySearch}
-            onSearchChange={setHistorySearch}
-            type={historyType}
-            onTypeChange={setHistoryType}
-            year={historyYear}
-            onYearChange={setHistoryYear}
-            years={historyYears}
-            resultCount={filteredRecords.length}
-            totalCount={records.length}
-          />
+          {/* HISTORY FILTERS */}
+          <div className="border-b border-slate-100">
+            <SeasonHistoryFilters
+              search={historySearch}
+              onSearchChange={setHistorySearch}
+              type={historyType}
+              onTypeChange={setHistoryType}
+              year={historyYear}
+              onYearChange={setHistoryYear}
+              years={historyYears}
+              resultCount={filteredRecords.length}
+              totalCount={records.length}
+            />
+          </div>
 
+          {/* LOADING */}
           {loading ? (
-            <div className="p-12 text-center text-sm text-slate-500">
-              Loading planting records...
+            <div className="p-12 text-center">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#A7EBF2] border-t-[#26658C]" />
+              <p className="text-[12px] text-[#26658C]">
+                Loading planting records...
+              </p>
             </div>
           ) : records.length === 0 ? (
+            /* EMPTY STATE */
             <div className="p-12 text-center">
-              <div className="mb-3 text-4xl">🌾</div>
-
-              <h3 className="font-semibold text-slate-800">
-                No planting records yet
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#A7EBF2]/30 text-2xl">
+                🌾
+              </div>
+              <h3 className="text-sm font-bold text-[#011C40]">
+                No Planting Records Yet
               </h3>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Click Add Planting Record to create your first record.
+              <p className="mx-auto mt-1 max-w-sm text-[11px] text-[#26658C]">
+                Add your first planting record to start tracking crop progress and harvest results.
               </p>
             </div>
           ) : filteredRecords.length === 0 ? (
-            <div className="p-12 text-center text-sm text-slate-500">
-              No planting records match the selected search and filters.
+            /* NO FILTER RESULTS */
+            <div className="p-12 text-center">
+              <div className="mb-3 text-3xl">⌕</div>
+              <h3 className="text-sm font-semibold text-[#011C40]">
+                No Matching Records
+              </h3>
+              <p className="mt-1 text-[11px] text-[#26658C]">
+                No planting records match your current search and filters.
+              </p>
             </div>
           ) : (
+            /* RECORDS TABLE */
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1500px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+              <table className="w-full min-w-[1500px] text-left text-[11px]">
+                <thead className="bg-[#A7EBF2]/20 text-[10px] uppercase tracking-wider text-[#023859]">
                   <tr>
-                    <th className="px-5 py-4 font-bold">Code</th>
-                    <th className="px-5 py-4 font-bold">Season</th>
-                    <th className="px-5 py-4 font-bold">Field</th>
-                    <th className="px-5 py-4 font-bold">Area (Ha)</th>
-                    <th className="px-5 py-4 font-bold">Rice Variety</th>
-                    <th className="px-5 py-4 font-bold">Planting Date</th>
-                    <th className="px-5 py-4 font-bold">Expected Harvest</th>
-                    <th className="px-5 py-4 font-bold">Actual Harvest</th>
-                    <th className="px-5 py-4 font-bold">Yield (Tons)</th>
-                    <th className="px-5 py-4 font-bold">Status</th>
-                    <th className="px-5 py-4 text-right font-bold">
-                      Actions
-                    </th>
+                    <th className="px-4 py-3.5 font-bold">Code</th>
+                    <th className="px-4 py-3.5 font-bold">Season</th>
+                    <th className="px-4 py-3.5 font-bold">Field</th>
+                    <th className="px-4 py-3.5 font-bold">Area (Ha)</th>
+                    <th className="px-4 py-3.5 font-bold">Rice Variety</th>
+                    <th className="px-4 py-3.5 font-bold">Planting Date</th>
+                    <th className="px-4 py-3.5 font-bold">Expected Harvest</th>
+                    <th className="px-4 py-3.5 font-bold">Actual Harvest</th>
+                    <th className="px-4 py-3.5 font-bold">Yield (Tons)</th>
+                    <th className="px-4 py-3.5 font-bold">Status</th>
+                    <th className="px-4 py-3.5 text-right font-bold">Actions</th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#A7EBF2]/30">
                   {filteredRecords.map((record) => (
                     <tr
                       key={record.id}
-                      className="transition hover:bg-slate-50"
+                      className="transition hover:bg-[#A7EBF2]/10"
                     >
-                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-slate-800">
+                      <td className="whitespace-nowrap px-4 py-3.5 font-semibold text-[#023859]">
                         {record.record_code || `#${record.id}`}
                       </td>
 
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-4 py-3.5 text-slate-600">
                         {record.season || "—"}
                       </td>
 
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-4 py-3.5 text-slate-600">
                         {record.field_name || "—"}
                       </td>
 
-                      <td className="whitespace-nowrap px-5 py-4 font-medium text-slate-800">
+                      <td className="whitespace-nowrap px-4 py-3.5 font-semibold text-[#011C40]">
                         {record.area_hectares !== null &&
                         record.area_hectares !== undefined
                           ? `${formatNumber(record.area_hectares)} ha`
                           : "—"}
                       </td>
 
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-slate-800">
+                      <td className="px-4 py-3.5">
+                        <p className="font-semibold text-[#023859]">
                           {record.rice_variety || "—"}
                         </p>
-
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-[10px] text-slate-500">
                           {record.crop || "Palay"}
                         </p>
                       </td>
 
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                         {formatDate(record.planting_date)}
                       </td>
 
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                         {formatDate(record.expected_harvest_date)}
                       </td>
 
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                         {formatDate(record.actual_harvest_date)}
                       </td>
 
-                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-slate-800">
+                      <td className="whitespace-nowrap px-4 py-3.5 font-semibold text-[#023859]">
                         {formatNumber(record.harvested_yield)}
                       </td>
 
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-3.5">
                         <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusStyle(record.status)}`}
+                          className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-semibold ${getStatusStyle(record.status)}`}
                         >
                           {record.status || "—"}
                         </span>
                       </td>
 
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
+                      <td className="px-4 py-3.5">
+                        <div className="flex justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleEdit(record)}
-                            className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 transition hover:bg-blue-100"
+                            className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3 py-1.5 text-[10px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/60"
                           >
                             Edit
                           </button>
@@ -1041,7 +1107,7 @@ export default function PlantingHarvesting() {
                           <button
                             type="button"
                             onClick={() => handleDelete(record)}
-                            className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                            className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[10px] font-semibold text-red-600 transition hover:bg-red-100"
                           >
                             Delete
                           </button>
@@ -1051,6 +1117,19 @@ export default function PlantingHarvesting() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* TABLE FOOTER */}
+          {!loading && filteredRecords.length > 0 && (
+            <div className="border-t border-[#A7EBF2]/40 bg-[#A7EBF2]/10 px-4 py-3">
+              <p className="text-[10px] text-[#26658C]">
+                Displaying{" "}
+                <span className="font-bold text-[#023859]">
+                  {filteredRecords.length}
+                </span>{" "}
+                planting and harvesting record(s).
+              </p>
             </div>
           )}
         </section>

@@ -16,6 +16,7 @@ class ProfileController extends Controller
 
     /**
      * Authenticate the customer and retrieve their current account.
+     * The customer ID is taken from the JWT token, not from frontend input.
      */
     private function require_customer()
     {
@@ -23,7 +24,7 @@ class ProfileController extends Controller
 
         $statement = $this->db->raw(
             'SELECT id, username, full_name, email,
-                    phone_number, delivery_address,
+                    contact_number, delivery_address,
                     role, section, is_active
              FROM users
              WHERE id = ?
@@ -81,18 +82,19 @@ class ProfileController extends Controller
 
         $user_id = (int) $user['id'];
 
+        // Use existing values when fields are not included in the request.
         $username = $data['username'] ?? $user['username'];
-        $full_name = $data['full_name'] ?? $user['full_name'];
+        $full_name = $data['full_name'] ?? ($user['full_name'] ?? '');
         $email = $data['email'] ?? $user['email'];
-        $phone_number = $data['phone_number'] ?? $user['phone_number'];
-        $delivery_address = $data['delivery_address'] ?? $user['delivery_address'];
+        $contact_number = $data['contact_number'] ?? ($user['contact_number'] ?? '');
+        $delivery_address = $data['delivery_address'] ?? ($user['delivery_address'] ?? '');
 
         // Validate input types.
         if (
             !is_string($username) ||
             !is_string($full_name) ||
             !is_string($email) ||
-            !is_string($phone_number) ||
+            !is_string($contact_number) ||
             !is_string($delivery_address)
         ) {
             $this->api->respond_error(
@@ -105,7 +107,7 @@ class ProfileController extends Controller
         $username = trim($username);
         $full_name = trim($full_name);
         $email = strtolower(trim($email));
-        $phone_number = trim($phone_number);
+        $contact_number = trim($contact_number);
         $delivery_address = trim($delivery_address);
 
         // Required fields.
@@ -121,7 +123,7 @@ class ProfileController extends Controller
             strlen($username) > 100 ||
             strlen($full_name) > 150 ||
             strlen($email) > 255 ||
-            strlen($phone_number) > 30
+            strlen($contact_number) > 30
         ) {
             $this->api->respond_error(
                 'One or more profile fields exceed the allowed length.',
@@ -139,7 +141,8 @@ class ProfileController extends Controller
 
         // Check duplicate username.
         $username_check = $this->db->raw(
-            'SELECT id FROM users
+            'SELECT id
+             FROM users
              WHERE username = ? AND id <> ?
              LIMIT 1',
             [$username, $user_id]
@@ -154,7 +157,8 @@ class ProfileController extends Controller
 
         // Check duplicate email.
         $email_check = $this->db->raw(
-            'SELECT id FROM users
+            'SELECT id
+             FROM users
              WHERE email = ? AND id <> ?
              LIMIT 1',
             [$email, $user_id]
@@ -167,38 +171,49 @@ class ProfileController extends Controller
             );
         }
 
-        // Update only the authenticated customer's editable fields.
+        // Update only the authenticated active customer.
         $this->db->raw(
             'UPDATE users
              SET username = ?,
                  full_name = ?,
                  email = ?,
-                 phone_number = ?,
+                 contact_number = ?,
                  delivery_address = ?
-             WHERE id = ? AND role = ?',
+             WHERE id = ?
+               AND role = ?
+               AND is_active = 1',
             [
                 $username,
                 $full_name !== '' ? $full_name : null,
                 $email,
-                $phone_number !== '' ? $phone_number : null,
+                $contact_number !== '' ? $contact_number : null,
                 $delivery_address !== '' ? $delivery_address : null,
                 $user_id,
                 'customer',
             ]
         );
 
-        // Retrieve updated profile.
+        // Retrieve the updated profile.
         $updated = $this->db->raw(
             'SELECT id, username, full_name, email,
-                    phone_number, delivery_address,
+                    contact_number, delivery_address,
                     role, section, is_active
              FROM users
              WHERE id = ?
+               AND role = ?
+               AND is_active = 1
              LIMIT 1',
-            [$user_id]
+            [$user_id, 'customer']
         );
 
         $updated_user = $updated->fetch(PDO::FETCH_ASSOC);
+
+        if (!$updated_user) {
+            $this->api->respond_error(
+                'Unable to retrieve the updated customer profile.',
+                500
+            );
+        }
 
         $this->api->respond([
             'success' => true,

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../providers";
 import { apiRequest } from "../../../../lib/api";
 import { toast } from "react-toastify";
@@ -12,6 +12,14 @@ import {
   getSeasonLabel,
   matchesSeasonHistory,
 } from "../../../../lib/seasonHistory";
+
+const COLORS = {
+  light: "#A7EBF2",
+  teal: "#54ACBF",
+  blue: "#26658C",
+  deep: "#023859",
+  navy: "#011C40",
+};
 
 const initialForm = {
   season_id: "",
@@ -52,43 +60,117 @@ function formatCurrency(amount) {
   }).format(Number(amount) || 0);
 }
 
+function getInventoryTotal(record) {
+  if (record.total_cost !== null && record.total_cost !== undefined) {
+    return Number(record.total_cost) || 0;
+  }
+
+  return (
+    (Number(record.quantity) || 0) *
+    (Number(record.unit_price) || 0)
+  );
+}
+
+function FormField({ label, required, htmlFor, children, hint }) {
+  return (
+    <div>
+      <label
+        htmlFor={htmlFor}
+        className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#023859]"
+      >
+        {label}
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </label>
+
+      {children}
+
+      {hint && (
+        <p className="mt-1.5 text-[11px] text-slate-400">
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const inputClass =
+  "w-full rounded-xl border border-[#54ACBF]/30 bg-[#A7EBF2]/10 px-3.5 py-2.5 text-[12px] text-[#011C40] outline-none transition placeholder:text-slate-400 focus:border-[#26658C] focus:bg-white focus:ring-2 focus:ring-[#54ACBF]/15";
+
+/* MAIN PAGE */
 export default function FarmInventory() {
   const { session } = useAuth();
+  const token = session?.accessToken;
 
   const [inventory, setInventory] = useState([]);
   const [seasons, setSeasons] = useState([]);
+
   const [historySearch, setHistorySearch] = useState("");
   const [historyType, setHistoryType] = useState("all");
   const [historyYear, setHistoryYear] = useState("all");
-  const [formData, setFormData] = useState(initialForm);
 
+  const [formData, setFormData] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const token = session?.accessToken;
-
-  const historyFilters = {
-    search: historySearch,
-    type: historyType,
-    year: historyYear,
-  };
-
-  const filteredInventory = inventory.filter((record) =>
-    matchesSeasonHistory(record, seasons, historyFilters, "season_id")
+  const historyFilters = useMemo(
+    () => ({
+      search: historySearch,
+      type: historyType,
+      year: historyYear,
+    }),
+    [historySearch, historyType, historyYear]
   );
 
-  const historyYears = getHistoryYears(inventory, seasons, "season_id");
+  const filteredInventory = useMemo(
+    () =>
+      inventory.filter((record) =>
+        matchesSeasonHistory(
+          record,
+          seasons,
+          historyFilters,
+          "season_id"
+        )
+      ),
+    [inventory, seasons, historyFilters]
+  );
+
+  const historyYears = useMemo(
+    () => getHistoryYears(inventory, seasons, "season_id"),
+    [inventory, seasons]
+  );
 
   const estimatedTotal =
     (Number(formData.quantity) || 0) *
     (Number(formData.unit_price) || 0);
 
+  const totalInventoryValue = useMemo(
+    () =>
+      inventory.reduce(
+        (total, record) => total + getInventoryTotal(record),
+        0
+      ),
+    [inventory]
+  );
+
+  const totalCategories = useMemo(
+    () =>
+      new Set(
+        inventory
+          .map((record) =>
+            String(record.item_category || "")
+              .trim()
+              .toLowerCase()
+          )
+          .filter(Boolean)
+      ).size,
+    [inventory]
+  );
+
+  /* LOAD DATA */
   const loadData = useCallback(async () => {
     if (!token) {
       setLoading(false);
@@ -97,6 +179,7 @@ export default function FarmInventory() {
     }
 
     setLoading(true);
+    setError("");
 
     try {
       const [inventoryResponse, seasonResponse] = await Promise.all([
@@ -107,19 +190,26 @@ export default function FarmInventory() {
       setInventory(getResponseData(inventoryResponse));
       setSeasons(getResponseData(seasonResponse));
     } catch (requestError) {
-      toast.error(
-        requestError.message || "Unable to load farm inventory records."
-      );
+      const message =
+        requestError.message ||
+        "Unable to load farm inventory records.";
+
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    const timer = window.setTimeout(loadData, 0);
+    const timer = window.setTimeout(() => {
+      loadData();
+    }, 0);
+
     return () => window.clearTimeout(timer);
   }, [loadData]);
 
+  /* FORM HANDLERS */
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -133,21 +223,17 @@ export default function FarmInventory() {
     setFormData(initialForm);
     setEditingId(null);
     setShowForm(false);
-    toast.error("Unable to process this request right now. Please try again.");
+    setError("");
   };
 
   const handleAdd = () => {
     setFormData(initialForm);
     setEditingId(null);
-    toast.error("Unable to process this request right now. Please try again.");
-    setSuccess("");
+    setError("");
     setShowForm(true);
   };
 
   const handleEdit = (record) => {
-    toast.error("Unable to process this request right now. Please try again.");
-    setSuccess("");
-
     setFormData({
       season_id: record.season_id ?? "",
       farm_act_id: record.farm_act_id ?? "",
@@ -160,14 +246,13 @@ export default function FarmInventory() {
     });
 
     setEditingId(record.id);
+    setError("");
     setShowForm(true);
   };
 
+  /* SAVE INVENTORY */
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    toast.error("Unable to process this request right now. Please try again.");
-    setSuccess("");
 
     if (!token) {
       toast.error("Your session has expired. Please sign in again.");
@@ -179,7 +264,10 @@ export default function FarmInventory() {
       return;
     }
 
-    if (!formData.item_category.trim() || !formData.item_name.trim()) {
+    if (
+      !formData.item_category.trim() ||
+      !formData.item_name.trim()
+    ) {
       toast.error("Please complete the required fields.");
       return;
     }
@@ -200,7 +288,9 @@ export default function FarmInventory() {
     const payload = {
       season_id: formData.season_id,
       farm_act_id:
-        formData.farm_act_id === "" ? null : Number(formData.farm_act_id),
+        formData.farm_act_id === ""
+          ? null
+          : Number(formData.farm_act_id),
       item_category: formData.item_category.trim(),
       item_name: formData.item_name.trim(),
       quantity,
@@ -210,6 +300,7 @@ export default function FarmInventory() {
     };
 
     setSaving(true);
+    setError("");
 
     try {
       if (editingId !== null) {
@@ -219,7 +310,7 @@ export default function FarmInventory() {
           body: payload,
         });
 
-        setSuccess("Farm inventory item updated successfully.");
+        toast.success("Farm inventory item updated successfully.");
       } else {
         await apiRequest("farm/inventory", {
           method: "POST",
@@ -227,29 +318,37 @@ export default function FarmInventory() {
           body: payload,
         });
 
-        setSuccess("Farm inventory item added successfully.");
+        toast.success("Farm inventory item added successfully.");
       }
 
       resetForm();
       await loadData();
     } catch (requestError) {
-      toast.error(
-        requestError.message || "Unable to save the inventory item."
-      );
+      const message =
+        requestError.message ||
+        "Unable to save the inventory item.";
+
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
   };
 
+  /* DELETE INVENTORY */
   const handleDelete = async (record) => {
+    if (!token) {
+      toast.error("Your session has expired. Please sign in again.");
+      return;
+    }
+
     const confirmed = window.confirm(
       `Are you sure you want to delete "${record.item_name}"?`
     );
 
     if (!confirmed) return;
 
-    toast.error("Unable to process this request right now. Please try again.");
-    setSuccess("");
+    setError("");
 
     try {
       await apiRequest(`farm/inventory/${record.id}`, {
@@ -257,31 +356,34 @@ export default function FarmInventory() {
         token,
       });
 
-      setSuccess("Farm inventory item deleted successfully.");
+      toast.success("Farm inventory item deleted successfully.");
       await loadData();
     } catch (requestError) {
-      toast.error(
-        requestError.message || "Unable to delete the inventory item."
-      );
+      const message =
+        requestError.message ||
+        "Unable to delete the inventory item.";
+
+      setError(message);
+      toast.error(message);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-800 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-[#F3F8FA] p-3 text-[#011C40] sm:p-5 lg:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
 
-        {/* Page Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* PAGE HEADER */}
+        <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">
-              Farm Management
+            <p className="mb-1 text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+              FARM MANAGEMENT
             </p>
 
-            <h1 className="font-serif text-3xl font-semibold text-slate-900">
+            <h1 className="text-xl font-serif tracking-tight text-[#011C40] sm:text-2xl">
               Farm Inventory
             </h1>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-[12px] text-[#26658C]">
               Manage seeds, fertilizers, equipment, and other farm supplies.
             </p>
           </div>
@@ -289,29 +391,83 @@ export default function FarmInventory() {
           <button
             type="button"
             onClick={handleAdd}
-            className="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-800"
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-[#023859] px-4 py-2.5 text-[12px] font-semibold text-white shadow-sm transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto"
           >
-            + Add Inventory Item
+            <span className="text-base leading-none">+</span>
+            Add Inventory Item
           </button>
-        </div>
+        </header>
 
-        {/* Alerts */}
+        {/* SUMMARY CARDS */}
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+          {/* TOTAL ITEMS */}
+          <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg text-[#26658C]">
+              📦
+            </div>
+
+            <div>
+              <p className="text-[11px] font-medium text-[#26658C]">
+                Total Inventory Items
+              </p>
+
+              <p className="mt-0.5 text-xl font-bold text-[#011C40]">
+                {loading ? "..." : inventory.length}
+              </p>
+            </div>
+          </div>
+
+          {/* TOTAL CATEGORIES */}
+          <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg text-[#26658C]">
+              🗂️
+            </div>
+
+            <div>
+              <p className="text-[11px] font-medium text-[#26658C]">
+                Inventory Categories
+              </p>
+
+              <p className="mt-0.5 text-xl font-bold text-[#011C40]">
+                {loading ? "..." : totalCategories}
+              </p>
+            </div>
+          </div>
+
+          {/* TOTAL VALUE */}
+          <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-1">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg text-[#26658C]">
+              ₱
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium text-[#26658C]">
+                Total Estimated Value
+              </p>
+
+              <p className="mt-0.5 truncate text-xl font-bold text-[#011C40]">
+                {loading ? "..." : formatCurrency(totalInventoryValue)}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ERROR MESSAGE */}
         {error && !showForm && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[12px] text-red-700"
+          >
             {error}
           </div>
         )}
 
-        {success && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {success}
-          </div>
-        )}
-
-        {/* Add / Edit Modal */}
+        {/* ADD / EDIT MODAL */}
         {showForm && (
           <div
-            className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-6"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-[#011C40]/60 p-3 backdrop-blur-sm sm:p-5"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget && !saving) {
                 resetForm();
@@ -321,27 +477,28 @@ export default function FarmInventory() {
             <section
               role="dialog"
               aria-modal="true"
-              aria-labelledby="inventory-modal-title"
-              className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+              aria-labelledby="farm-inventory-modal-title"
+              className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#54ACBF]/30 bg-white shadow-2xl"
             >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
+
+              {/* MODAL HEADER */}
+              <div className="flex items-center justify-between gap-4 border-b border-[#A7EBF2]/60 px-5 py-4 sm:px-6">
                 <div>
-                  <p className="mb-1 text-xs font-bold uppercase tracking-widest text-blue-900">
-                    Farm Management
+                  <p className="mb-1 text-[9px] font-extrabold tracking-[1.3px] text-[#54ACBF]">
+                    FARM MANAGEMENT
                   </p>
 
                   <h2
-                    id="inventory-modal-title"
-                    className="font-serif text-xl font-semibold text-slate-900"
+                    id="farm-inventory-modal-title"
+                    className="text-lg font-bold text-[#011C40]"
                   >
                     {editingId !== null
                       ? "Edit Inventory Item"
                       : "Add Inventory Item"}
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    Enter the inventory item details.
+                  <p className="mt-1 text-[11px] text-[#26658C]">
+                    Enter the details of the farm inventory item.
                   </p>
                 </div>
 
@@ -350,35 +507,33 @@ export default function FarmInventory() {
                   onClick={resetForm}
                   disabled={saving}
                   aria-label="Close modal"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-xl text-[#26658C] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                 >
                   ×
                 </button>
               </div>
 
-              {/* Modal Form */}
+              {/* MODAL FORM */}
               <form
                 onSubmit={handleSubmit}
                 className="flex min-h-0 flex-1 flex-col"
               >
-                <div className="overflow-y-auto px-5 py-6 sm:px-7">
+                <div className="overflow-y-auto px-5 py-5 sm:px-6">
+
                   {error && (
-                    <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-[12px] text-red-700">
                       {error}
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-                    {/* Season */}
-                    <div>
-                      <label
-                        htmlFor="season_id"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Season <span className="text-red-500">*</span>
-                      </label>
-
+                    {/* SEASON */}
+                    <FormField
+                      label="Season"
+                      required
+                      htmlFor="season_id"
+                    >
                       <SeasonSelect
                         id="season_id"
                         name="season_id"
@@ -389,21 +544,18 @@ export default function FarmInventory() {
                       />
 
                       {seasons.length === 0 && (
-                        <p className="mt-2 text-xs text-amber-700">
-                          No season records available. Please check the seasons table.
+                        <p className="mt-2 text-[11px] text-amber-700">
+                          No season records available. Please create a season first.
                         </p>
                       )}
-                    </div>
+                    </FormField>
 
-                    {/* Farm Activity ID */}
-                    <div>
-                      <label
-                        htmlFor="farm_act_id"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Farm Activity ID
-                      </label>
-
+                    {/* FARM ACTIVITY ID */}
+                    <FormField
+                      label="Farm Activity ID"
+                      htmlFor="farm_act_id"
+                      hint="Optional. Link this item to a farm activity."
+                    >
                       <input
                         id="farm_act_id"
                         type="number"
@@ -413,19 +565,17 @@ export default function FarmInventory() {
                         value={formData.farm_act_id}
                         onChange={handleChange}
                         placeholder="Enter farm activity ID"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
+                        className={inputClass}
                       />
-                    </div>
+                    </FormField>
 
-                    {/* Category */}
-                    <div>
-                      <label
-                        htmlFor="item_category"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Category <span className="text-red-500">*</span>
-                      </label>
-
+                    {/* CATEGORY */}
+                    <FormField
+                      label="Category"
+                      required
+                      htmlFor="item_category"
+                      hint="Example: Seeds, Fertilizers, Equipment"
+                    >
                       <input
                         id="item_category"
                         type="text"
@@ -433,20 +583,17 @@ export default function FarmInventory() {
                         value={formData.item_category}
                         onChange={handleChange}
                         required
-                        placeholder="e.g. Seeds, Fertilizers, Equipment"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
+                        placeholder="Enter item category"
+                        className={inputClass}
                       />
-                    </div>
+                    </FormField>
 
-                    {/* Item Name */}
-                    <div>
-                      <label
-                        htmlFor="item_name"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Item Name <span className="text-red-500">*</span>
-                      </label>
-
+                    {/* ITEM NAME */}
+                    <FormField
+                      label="Item Name"
+                      required
+                      htmlFor="item_name"
+                    >
                       <input
                         id="item_name"
                         type="text"
@@ -455,19 +602,15 @@ export default function FarmInventory() {
                         onChange={handleChange}
                         required
                         placeholder="Enter item name"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
+                        className={inputClass}
                       />
-                    </div>
+                    </FormField>
 
-                    {/* Quantity */}
-                    <div>
-                      <label
-                        htmlFor="quantity"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Quantity
-                      </label>
-
+                    {/* QUANTITY */}
+                    <FormField
+                      label="Quantity"
+                      htmlFor="quantity"
+                    >
                       <input
                         id="quantity"
                         type="number"
@@ -476,39 +619,32 @@ export default function FarmInventory() {
                         step="0.01"
                         value={formData.quantity}
                         onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
+                        className={inputClass}
                       />
-                    </div>
+                    </FormField>
 
-                    {/* Unit */}
-                    <div>
-                      <label
-                        htmlFor="unit"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Unit
-                      </label>
-
+                    {/* UNIT */}
+                    <FormField
+                      label="Unit"
+                      htmlFor="unit"
+                      hint="Example: kg, sack, liter, piece"
+                    >
                       <input
                         id="unit"
                         type="text"
                         name="unit"
                         value={formData.unit}
                         onChange={handleChange}
-                        placeholder="e.g. kg, sack, liter, piece"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
+                        placeholder="Enter unit"
+                        className={inputClass}
                       />
-                    </div>
+                    </FormField>
 
-                    {/* Unit Price */}
-                    <div>
-                      <label
-                        htmlFor="unit_price"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Price per Unit (₱)
-                      </label>
-
+                    {/* UNIT PRICE */}
+                    <FormField
+                      label="Price per Unit (₱)"
+                      htmlFor="unit_price"
+                    >
                       <input
                         id="unit_price"
                         type="number"
@@ -517,49 +653,52 @@ export default function FarmInventory() {
                         step="0.01"
                         value={formData.unit_price}
                         onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
+                        className={inputClass}
                       />
-                    </div>
+                    </FormField>
 
-                    {/* Date Acquired */}
-                    <div>
-                      <label
-                        htmlFor="date_acquired"
-                        className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700"
-                      >
-                        Date Acquired
-                      </label>
-
+                    {/* DATE ACQUIRED */}
+                    <FormField
+                      label="Date Acquired"
+                      htmlFor="date_acquired"
+                    >
                       <input
                         id="date_acquired"
                         type="date"
                         name="date_acquired"
                         value={formData.date_acquired}
                         onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
+                        className={inputClass}
                       />
-                    </div>
+                    </FormField>
+
                   </div>
 
-                  {/* Estimated Total */}
-                  <div className="mt-6 flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50 p-4">
-                    <span className="text-sm font-semibold text-blue-900">
-                      Estimated Total Cost
-                    </span>
+                  {/* ESTIMATED TOTAL */}
+                  <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-[#54ACBF]/25 bg-[#A7EBF2]/15 p-4">
+                    <div>
+                      <p className="text-[11px] font-semibold text-[#26658C]">
+                        Estimated Total Cost
+                      </p>
 
-                    <span className="text-lg font-bold text-blue-950">
+                      <p className="mt-0.5 text-[10px] text-[#26658C]/70">
+                        Quantity × Price per Unit
+                      </p>
+                    </div>
+
+                    <p className="text-lg font-bold text-[#023859]">
                       {formatCurrency(estimatedTotal)}
-                    </span>
+                    </p>
                   </div>
                 </div>
 
-                {/* Modal Footer */}
-                <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+                {/* MODAL FOOTER */}
+                <div className="flex flex-col-reverse gap-2 border-t border-[#A7EBF2]/50 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
                   <button
                     type="button"
                     onClick={resetForm}
                     disabled={saving}
-                    className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                    className="rounded-xl border border-[#54ACBF]/40 px-5 py-2.5 text-[12px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/20 disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -567,7 +706,7 @@ export default function FarmInventory() {
                   <button
                     type="submit"
                     disabled={saving || seasons.length === 0}
-                    className="rounded-xl bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl bg-[#023859] px-6 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving
                       ? "Saving..."
@@ -581,16 +720,18 @@ export default function FarmInventory() {
           </div>
         )}
 
-        {/* Inventory Table */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-2 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        {/* INVENTORY RECORDS */}
+        <section className="overflow-hidden rounded-xl border border-[#54ACBF]/25 bg-white shadow-sm">
+
+          {/* TABLE HEADER */}
+          <div className="flex flex-col gap-3 border-b border-[#A7EBF2]/50 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-base font-bold text-[#011C40]">
                 Inventory Records
               </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Total items: {filteredInventory.length}
+              <p className="mt-1 text-[11px] text-[#26658C]">
+                Showing {filteredInventory.length} of {inventory.length} records
               </p>
             </div>
 
@@ -598,114 +739,166 @@ export default function FarmInventory() {
               type="button"
               onClick={loadData}
               disabled={loading}
-              className="text-sm font-semibold text-blue-900 transition hover:text-blue-700 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 self-start rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3.5 py-2 text-[11px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/50 disabled:opacity-50 sm:self-auto"
             >
+              <span className="text-sm">↻</span>
               {loading ? "Refreshing..." : "Refresh"}
             </button>
           </div>
 
-          <SeasonHistoryFilters
-            search={historySearch}
-            onSearchChange={setHistorySearch}
-            type={historyType}
-            onTypeChange={setHistoryType}
-            year={historyYear}
-            onYearChange={setHistoryYear}
-            years={historyYears}
-            resultCount={filteredInventory.length}
-            totalCount={inventory.length}
-          />
+          {/* HISTORY FILTERS */}
+          <div className="border-b border-slate-100">
+            <SeasonHistoryFilters
+              search={historySearch}
+              onSearchChange={setHistorySearch}
+              type={historyType}
+              onTypeChange={setHistoryType}
+              year={historyYear}
+              onYearChange={setHistoryYear}
+              years={historyYears}
+              resultCount={filteredInventory.length}
+              totalCount={inventory.length}
+            />
+          </div>
 
+          {/* LOADING */}
           {loading ? (
-            <div className="p-12 text-center text-sm text-slate-500">
-              Loading inventory records...
+            <div className="p-12 text-center">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#A7EBF2] border-t-[#26658C]" />
+
+              <p className="text-[12px] text-[#26658C]">
+                Loading inventory records...
+              </p>
             </div>
           ) : inventory.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="mb-3 text-4xl">📦</div>
 
-              <h3 className="font-semibold text-slate-800">
-                No inventory records yet
+            /* EMPTY STATE */
+            <div className="p-12 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#A7EBF2]/30 text-2xl">
+                📦
+              </div>
+
+              <h3 className="text-sm font-bold text-[#011C40]">
+                No Inventory Records Yet
               </h3>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Click Add Inventory Item to create your first record.
+              <p className="mx-auto mt-1 max-w-sm text-[11px] text-[#26658C]">
+                Add your first inventory item to start tracking your farm supplies.
               </p>
             </div>
           ) : filteredInventory.length === 0 ? (
-            <div className="p-12 text-center text-sm text-slate-500">
-              No inventory records match the selected search and filters.
+
+            /* NO FILTER RESULTS */
+            <div className="p-12 text-center">
+              <div className="mb-3 text-3xl">⌕</div>
+
+              <h3 className="text-sm font-semibold text-[#011C40]">
+                No Matching Records
+              </h3>
+
+              <p className="mt-1 text-[11px] text-[#26658C]">
+                No inventory records match your current search and filters.
+              </p>
             </div>
           ) : (
+
+            /* INVENTORY TABLE */
             <div className="overflow-x-auto">
-              <table className="w-full min-w-262.5 text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+              <table className="w-full min-w-[1050px] text-left text-[11px]">
+
+                <thead className="bg-[#A7EBF2]/20 text-[10px] uppercase tracking-wider text-[#023859]">
                   <tr>
-                    <th className="px-5 py-4 font-bold">Item</th>
-                    <th className="px-5 py-4 font-bold">Category</th>
-                    <th className="px-5 py-4 font-bold">Season</th>
-                    <th className="px-5 py-4 font-bold">Quantity</th>
-                    <th className="px-5 py-4 font-bold">Unit</th>
-                    <th className="px-5 py-4 font-bold">Total Cost</th>
-                    <th className="px-5 py-4 font-bold">Date Acquired</th>
-                    <th className="px-5 py-4 text-right font-bold">
+                    <th className="px-4 py-3.5 font-bold">
+                      Item
+                    </th>
+
+                    <th className="px-4 py-3.5 font-bold">
+                      Category
+                    </th>
+
+                    <th className="px-4 py-3.5 font-bold">
+                      Season
+                    </th>
+
+                    <th className="px-4 py-3.5 font-bold">
+                      Quantity
+                    </th>
+
+                    <th className="px-4 py-3.5 font-bold">
+                      Unit
+                    </th>
+
+                    <th className="px-4 py-3.5 font-bold">
+                      Unit Price
+                    </th>
+
+                    <th className="px-4 py-3.5 font-bold">
+                      Total Cost
+                    </th>
+
+                    <th className="px-4 py-3.5 font-bold">
+                      Date Acquired
+                    </th>
+
+                    <th className="px-4 py-3.5 text-right font-bold">
                       Actions
                     </th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#A7EBF2]/30">
                   {filteredInventory.map((record) => (
                     <tr
                       key={record.id}
-                      className="transition hover:bg-slate-50"
+                      className="transition hover:bg-[#A7EBF2]/10"
                     >
-                      <td className="px-5 py-4 font-semibold text-slate-800">
+                      <td className="px-4 py-3.5 font-semibold text-[#023859]">
                         {record.item_name || "—"}
                       </td>
 
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-4 py-3.5 text-slate-600">
                         {record.item_category || "—"}
                       </td>
 
-                      <td className="px-5 py-4">
-                        <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
+                      <td className="px-4 py-3.5">
+                        <span className="inline-flex whitespace-nowrap rounded-full border border-[#54ACBF]/25 bg-[#A7EBF2]/20 px-2.5 py-1 text-[10px] font-semibold text-[#023859]">
                           {getSeasonLabel(
                             seasons.find(
                               (season) =>
-                                season.season_id === record.season_id
+                                String(season.season_id) ===
+                                String(record.season_id)
                             ),
                             record.season_id
                           ) || "—"}
                         </span>
                       </td>
 
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="whitespace-nowrap px-4 py-3.5 font-semibold text-[#011C40]">
                         {record.quantity ?? "—"}
                       </td>
 
-                      <td className="px-5 py-4 text-slate-600">
+                      <td className="px-4 py-3.5 text-slate-600">
                         {record.unit || "—"}
                       </td>
 
-                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-slate-800">
-                        {formatCurrency(
-                          record.total_cost ??
-                          Number(record.quantity || 0) *
-                          Number(record.unit_price || 0)
-                        )}
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {formatCurrency(record.unit_price)}
                       </td>
 
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                      <td className="whitespace-nowrap px-4 py-3.5 font-bold text-[#023859]">
+                        {formatCurrency(getInventoryTotal(record))}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                         {formatDate(record.date_acquired)}
                       </td>
 
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
+                      <td className="px-4 py-3.5">
+                        <div className="flex justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleEdit(record)}
-                            className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 transition hover:bg-blue-100"
+                            className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3 py-1.5 text-[10px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/60"
                           >
                             Edit
                           </button>
@@ -713,7 +906,7 @@ export default function FarmInventory() {
                           <button
                             type="button"
                             onClick={() => handleDelete(record)}
-                            className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                            className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[10px] font-semibold text-red-600 transition hover:bg-red-100"
                           >
                             Delete
                           </button>
@@ -723,6 +916,19 @@ export default function FarmInventory() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* TABLE FOOTER */}
+          {!loading && filteredInventory.length > 0 && (
+            <div className="border-t border-[#A7EBF2]/40 bg-[#A7EBF2]/10 px-4 py-3">
+              <p className="text-[10px] text-[#26658C]">
+                Displaying{" "}
+                <span className="font-bold text-[#023859]">
+                  {filteredInventory.length}
+                </span>{" "}
+                inventory record(s).
+              </p>
             </div>
           )}
         </section>

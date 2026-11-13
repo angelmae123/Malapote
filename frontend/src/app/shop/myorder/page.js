@@ -6,7 +6,7 @@ import Link from "next/link";
 import { apiRequest } from "../../../lib/api";
 import ShopLogoutButton from "../ShopLogoutButton";
 
-const NAVIGATION = [
+const navigation = [
   { label: "Shop", href: "/shop/home", icon: "shop" },
   { label: "Cart", href: "/shop/cart", icon: "cart" },
   { label: "My Orders", href: "/shop/myorder", icon: "orders" },
@@ -84,7 +84,7 @@ function getStatusStyle(status) {
   }
 
   if (normalized === "processing") {
-    return "border-blue-200 bg-blue-50 text-blue-700";
+    return "border-[#54ACBF]/40 bg-[#A7EBF2]/30 text-[#023859]";
   }
 
   if (normalized === "delivered") {
@@ -200,15 +200,21 @@ function StatusTracker({ status }) {
 
   if (normalized === "cancelled") {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-        <div className="flex items-center gap-2 text-sm font-extrabold text-red-700">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100">
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+        <div className="flex items-center gap-3 text-sm font-bold text-red-700">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-lg">
             ×
           </span>
-          Order Cancelled
+
+          <div>
+            <p>Order Cancelled</p>
+            <p className="mt-0.5 text-[11px] font-medium text-red-500">
+              This order is no longer being processed.
+            </p>
+          </div>
         </div>
 
-        <p className="mt-2 text-xs leading-5 text-red-600">
+        <p className="mt-3 text-xs leading-5 text-red-600">
           This order has been cancelled. Please contact the shop if you need
           more information.
         </p>
@@ -219,16 +225,22 @@ function StatusTracker({ status }) {
   const currentStep = getStatusStep(status);
 
   return (
-    <div className="rounded-xl border border-[#e7edf6] bg-[#f8faff] p-4">
-      <h4 className="mb-5 text-xs font-extrabold uppercase tracking-wider text-slate-500">
-        Order Progress
-      </h4>
+    <div className="rounded-2xl border border-[#54ACBF]/25 bg-[#F3F8FA] p-5">
+      <div className="mb-6 flex items-center justify-between">
+        <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#023859]">
+          Order Progress
+        </h4>
+
+        <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-[#26658C]">
+          Step {currentStep + 1} of 3
+        </span>
+      </div>
 
       <div className="relative grid grid-cols-3">
-        <div className="absolute left-[16.5%] right-[16.5%] top-[13px] h-[3px] bg-slate-200" />
+        <div className="absolute left-[16.5%] right-[16.5%] top-[13px] h-[3px] rounded-full bg-[#dce7eb]" />
 
         <div
-          className="absolute left-[16.5%] top-[13px] h-[3px] bg-[#2863ee] transition-all"
+          className="absolute left-[16.5%] top-[13px] h-[3px] rounded-full bg-[#023859] transition-all duration-500"
           style={{
             width: `${(currentStep / 2) * 67}%`,
           }}
@@ -243,9 +255,9 @@ function StatusTracker({ status }) {
               className="relative z-10 flex flex-col items-center text-center"
             >
               <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[10px] font-extrabold ${
+                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[10px] font-bold transition ${
                   completed
-                    ? "border-[#2863ee] bg-[#2863ee] text-white"
+                    ? "border-[#023859] bg-[#023859] text-white"
                     : "border-slate-300 bg-white text-slate-400"
                 }`}
               >
@@ -254,7 +266,7 @@ function StatusTracker({ status }) {
 
               <span
                 className={`mt-2 text-[10px] font-bold sm:text-xs ${
-                  completed ? "text-[#2458d8]" : "text-slate-400"
+                  completed ? "text-[#023859]" : "text-slate-400"
                 }`}
               >
                 {step}
@@ -264,7 +276,7 @@ function StatusTracker({ status }) {
         })}
       </div>
 
-      <p className="mt-5 text-center text-xs leading-5 text-slate-500">
+      <p className="mt-5 text-center text-xs leading-5 text-[#26658C]">
         {getStatusDescription(status)}
       </p>
     </div>
@@ -281,27 +293,25 @@ function OrderItems({ items }) {
   }
 
   return (
-    <div className="divide-y divide-[#edf1f7]">
+    <div className="divide-y divide-[#A7EBF2]/40">
       {items.map((item, index) => {
         const itemName = item.product_name || item.name || "Rice Product";
         const quantity = Number(item.quantity || 0);
         const price = Number(item.unit_price || item.price || 0);
-        const itemSubtotal = Number(
-          item.subtotal ?? price * quantity
-        );
+        const itemSubtotal = Number(item.subtotal ?? price * quantity);
         const sackSize = Number(item.sack_size_kg || 0);
 
         return (
           <div
             key={`${item.product_id || itemName}-${index}`}
-            className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+            className="flex items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-extrabold text-slate-800">
+              <p className="truncate text-sm font-bold text-[#011C40]">
                 {itemName}
               </p>
 
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-[#26658C]">
                 {formatQuantity(item)}
                 {sackSize > 0
                   ? ` · ${sackSize} kg per sack`
@@ -312,12 +322,12 @@ function OrderItems({ items }) {
                 {getItemWeight(item)}
               </p>
 
-              <p className="mt-1 text-[11px] text-slate-500">
+              <p className="mt-1 text-xs font-medium text-[#26658C]">
                 {formatCurrency(price)} each
               </p>
             </div>
 
-            <p className="shrink-0 text-sm font-extrabold text-[#17345c]">
+            <p className="shrink-0 text-sm font-extrabold text-[#023859]">
               {formatCurrency(itemSubtotal)}
             </p>
           </div>
@@ -331,41 +341,78 @@ function OrderDetails({ order, items }) {
   const subtotal = getOrderSubtotal(items);
 
   return (
-    <div className="border-t border-[#e8edf5] bg-[#fbfcff] p-4 sm:p-5">
+    <div className="border-t border-[#54ACBF]/25 bg-[#F3F8FA] p-4 sm:p-6">
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-5">
-          <section>
-            <h3 className="mb-3 text-xs font-extrabold uppercase tracking-wider text-slate-500">
-              Products Ordered
-            </h3>
+          {/* PRODUCTS ORDERED */}
+          <section className="rounded-2xl border border-[#54ACBF]/25 bg-white p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-[#023859]">
+                <NavIcon name="shop" className="h-4 w-4" />
+              </span>
+
+              <div>
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#023859]">
+                  Products Ordered
+                </h3>
+
+                <p className="mt-0.5 text-[10px] text-[#26658C]">
+                  Items included in this order
+                </p>
+              </div>
+            </div>
 
             <OrderItems items={items} />
           </section>
 
-          <section className="rounded-xl border border-[#e8edf5] bg-white p-4">
-            <h3 className="mb-3 text-xs font-extrabold uppercase tracking-wider text-slate-500">
-              Delivery Information
-            </h3>
+          {/* DELIVERY INFORMATION */}
+          <section className="rounded-2xl border border-[#54ACBF]/25 bg-white p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-[#023859]">
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+              </span>
 
-            <div className="space-y-2.5 text-xs">
+              <div>
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#023859]">
+                  Delivery Information
+                </h3>
+
+                <p className="mt-0.5 text-[10px] text-[#26658C]">
+                  Where your order will be delivered
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs">
               <div>
                 <p className="text-slate-400">Recipient</p>
-                <p className="mt-0.5 font-bold text-slate-800">
+                <p className="mt-1 font-bold text-[#011C40]">
                   {order.customer_name || "—"}
                 </p>
               </div>
 
               <div>
                 <p className="text-slate-400">Contact Number</p>
-                <p className="mt-0.5 font-semibold text-slate-700">
+                <p className="mt-1 font-semibold text-[#26658C]">
                   {order.contact_number || "—"}
                 </p>
               </div>
 
               {order.email && (
                 <div>
-                  <p className="text-slate-400">Email</p>
-                  <p className="mt-0.5 font-semibold text-slate-700">
+                  <p className="text-slate-400">Email Address</p>
+                  <p className="mt-1 break-all font-semibold text-[#26658C]">
                     {order.email}
                   </p>
                 </div>
@@ -373,11 +420,11 @@ function OrderDetails({ order, items }) {
 
               <div>
                 <p className="text-slate-400">Delivery Address</p>
-                <p className="mt-0.5 font-semibold leading-5 text-slate-700">
+                <p className="mt-1 font-semibold leading-5 text-[#26658C]">
                   {order.delivery_address || "—"}
                 </p>
 
-                <p className="mt-1 font-semibold text-slate-700">
+                <p className="mt-1 font-semibold text-[#26658C]">
                   {[order.barangay, order.municipality]
                     .filter(Boolean)
                     .join(", ") || "—"}
@@ -385,9 +432,9 @@ function OrderDetails({ order, items }) {
               </div>
 
               {order.order_notes && (
-                <div>
-                  <p className="text-slate-400">Order Notes</p>
-                  <p className="mt-0.5 leading-5 text-slate-700">
+                <div className="rounded-xl bg-[#F3F8FA] p-3">
+                  <p className="font-bold text-[#26658C]">Order Notes</p>
+                  <p className="mt-1 leading-5 text-slate-600">
                     {order.order_notes}
                   </p>
                 </div>
@@ -399,24 +446,49 @@ function OrderDetails({ order, items }) {
         <div className="space-y-5">
           <StatusTracker status={order.status || "Pending"} />
 
-          <section className="rounded-xl border border-[#e8edf5] bg-white p-4">
-            <h3 className="mb-3 text-xs font-extrabold uppercase tracking-wider text-slate-500">
-              Payment & Summary
-            </h3>
+          {/* PAYMENT SUMMARY */}
+          <section className="rounded-2xl border border-[#54ACBF]/25 bg-white p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-[#023859]">
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M3 10h18M7 15h3" />
+                </svg>
+              </span>
 
-            <div className="space-y-3 text-xs">
+              <div>
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#023859]">
+                  Payment & Summary
+                </h3>
+
+                <p className="mt-0.5 text-[10px] text-[#26658C]">
+                  Order payment breakdown
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
               <div className="flex justify-between gap-3">
-                <span className="text-slate-500">Payment Method</span>
-                <span className="text-right font-bold text-slate-800">
+                <span className="text-[#26658C]">Payment Method</span>
+                <span className="text-right font-bold text-[#011C40]">
                   {order.payment_method || "—"}
                 </span>
               </div>
 
               <div className="flex justify-between gap-3">
-                <span className="text-slate-500">Payment Status</span>
+                <span className="text-[#26658C]">Payment Status</span>
+
                 <span
-                  className={`rounded-full px-2.5 py-1 font-bold ${
-                    order.payment_status === "Paid"
+                  className={`rounded-full px-3 py-1 text-[10px] font-bold ${
+                    String(order.payment_status || "").toLowerCase() === "paid"
                       ? "bg-green-50 text-green-700"
                       : "bg-amber-50 text-amber-700"
                   }`}
@@ -425,27 +497,29 @@ function OrderDetails({ order, items }) {
                 </span>
               </div>
 
-              <div className="flex justify-between gap-3">
-                <span className="text-slate-500">Subtotal</span>
-                <span className="font-semibold text-slate-800">
-                  {formatCurrency(subtotal)}
-                </span>
+              <div className="border-t border-dashed border-[#54ACBF]/30 pt-4">
+                <div className="flex justify-between gap-3">
+                  <span className="text-[#26658C]">Subtotal</span>
+                  <span className="font-semibold text-[#011C40]">
+                    {formatCurrency(subtotal)}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex justify-between gap-3">
+                  <span className="text-[#26658C]">Shipping Fee</span>
+                  <span className="font-semibold text-[#011C40]">
+                    {formatCurrency(order.shipping_fee)}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex justify-between gap-3">
-                <span className="text-slate-500">Shipping Fee</span>
-                <span className="font-semibold text-slate-800">
-                  {formatCurrency(order.shipping_fee)}
-                </span>
-              </div>
-
-              <div className="border-t border-[#e8edf5] pt-3">
+              <div className="rounded-xl bg-[#023859] p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-extrabold text-slate-700">
+                  <span className="text-xs font-bold text-white/80">
                     Total Amount
                   </span>
 
-                  <span className="text-lg font-extrabold text-[#2458d8]">
+                  <span className="text-lg font-extrabold text-white">
                     {formatCurrency(order.total_amount)}
                   </span>
                 </div>
@@ -473,16 +547,20 @@ function OrderRow({ order }) {
   );
 
   return (
-    <article className="overflow-hidden rounded-xl border border-[#e0e8f4] bg-white shadow-sm transition hover:border-[#cbdaf3]">
-      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <article className="overflow-hidden rounded-2xl border border-[#54ACBF]/25 bg-white shadow-[0_3px_14px_rgba(1,28,64,0.04)] transition duration-200 hover:border-[#54ACBF]/60 hover:shadow-md">
+      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="break-all text-sm font-extrabold text-[#17345c]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-[#023859]">
+              <NavIcon name="orders" className="h-4 w-4" />
+            </span>
+
+            <h3 className="break-all text-sm font-extrabold text-[#011C40]">
               {order.order_code || `Order #${order.id}`}
             </h3>
 
             <span
-              className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${getStatusStyle(
+              className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold ${getStatusStyle(
                 status
               )}`}
             >
@@ -490,22 +568,22 @@ function OrderRow({ order }) {
             </span>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#26658C]">
             <span>{formatShortDate(order.order_date)}</span>
-            <span className="hidden text-slate-300 sm:inline">•</span>
+            <span className="text-slate-300">•</span>
             <span>
               {itemCount} item{itemCount !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4 border-t border-[#edf1f7] pt-3 sm:min-w-[220px] sm:justify-end sm:border-0 sm:pt-0">
+        <div className="flex items-center justify-between gap-4 border-t border-[#A7EBF2]/40 pt-4 sm:min-w-[245px] sm:justify-end sm:border-0 sm:pt-0">
           <div className="sm:text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Total Amount
             </p>
 
-            <p className="mt-1 text-base font-extrabold text-[#17345c]">
+            <p className="mt-1 text-lg font-extrabold text-[#023859]">
               {formatCurrency(order.total_amount)}
             </p>
           </div>
@@ -514,24 +592,136 @@ function OrderRow({ order }) {
             type="button"
             onClick={() => setExpanded((previous) => !previous)}
             aria-expanded={expanded}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-[#dce5f2] bg-white px-3 py-2 text-xs font-bold text-[#2458d8] transition hover:bg-blue-50"
+            className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition ${
+              expanded
+                ? "border-[#023859] bg-[#023859] text-white"
+                : "border-[#54ACBF]/35 bg-white text-[#023859] hover:bg-[#A7EBF2]/25"
+            }`}
           >
             {expanded ? "Hide Details" : "View Details"}
-            <span
-              className={`transition-transform ${
+
+            <svg
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${
                 expanded ? "rotate-180" : ""
               }`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              ↓
-            </span>
+              <path d="m6 9 6 6 6-6" />
+            </svg>
           </button>
         </div>
       </div>
 
-      {expanded && (
-        <OrderDetails order={order} items={items} />
-      )}
+      {expanded && <OrderDetails order={order} items={items} />}
     </article>
+  );
+}
+
+function SummaryCard({ label, count, type }) {
+  const styles = {
+    total: {
+      iconBg: "bg-[#A7EBF2]/30",
+      iconColor: "text-[#023859]",
+      number: "text-[#011C40]",
+      border: "border-[#54ACBF]/25",
+    },
+    pending: {
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-600",
+      number: "text-amber-600",
+      border: "border-amber-100",
+    },
+    processing: {
+      iconBg: "bg-[#A7EBF2]/30",
+      iconColor: "text-[#26658C]",
+      number: "text-[#26658C]",
+      border: "border-[#54ACBF]/30",
+    },
+    delivered: {
+      iconBg: "bg-green-50",
+      iconColor: "text-green-600",
+      number: "text-green-600",
+      border: "border-green-100",
+    },
+  };
+
+  const style = styles[type];
+
+  return (
+    <div
+      className={`rounded-2xl border ${style.border} bg-white p-4 shadow-[0_3px_14px_rgba(1,28,64,0.04)] transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold text-[#26658C]">{label}</p>
+
+        <span
+          className={`flex h-9 w-9 items-center justify-center rounded-xl ${style.iconBg} ${style.iconColor}`}
+        >
+          {type === "total" && (
+            <NavIcon name="orders" className="h-4 w-4" />
+          )}
+
+          {type === "pending" && (
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          )}
+
+          {type === "processing" && (
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 7v5h-5" />
+              <path d="M4 17v-5h5" />
+              <path d="M5.6 9a7 7 0 0 1 11.5-2L20 12" />
+              <path d="M18.4 15a7 7 0 0 1-11.5 2L4 12" />
+            </svg>
+          )}
+
+          {type === "delivered" && (
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m5 12 4 4L19 6" />
+            </svg>
+          )}
+        </span>
+      </div>
+
+      <p className={`mt-3 text-2xl font-extrabold ${style.number}`}>
+        {count}
+      </p>
+
+      <p className="mt-1 text-[10px] text-slate-400">
+        {type === "total" ? "All your purchases" : `${label} orders`}
+      </p>
+    </div>
   );
 }
 
@@ -590,34 +780,38 @@ export default function MyOrderPage() {
   ).length;
 
   return (
-    <main className="min-h-screen bg-[#f1f5fd] pb-24 text-[#17345c] lg:pb-0">
+    <main className="min-h-screen bg-[#F3F8FA] pb-28 text-[#011C40] lg:pb-0">
+
       {/* DESKTOP HEADER */}
-      <header className="sticky top-0 z-30 hidden border-b border-[#e2e9f5] bg-white/95 backdrop-blur lg:block">
-        <div className="mx-auto grid h-[76px] max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-6 px-5 sm:px-8">
+      <header className="sticky top-0 z-30 hidden border-b border-[#54ACBF]/25 bg-white/95 shadow-sm backdrop-blur lg:block">
+        <div className="mx-auto grid h-[76px] max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-5 sm:px-8">
+
+          {/* LOGO */}
           <Link
             href="/shop/home"
-            className="flex shrink-0 items-center gap-3"
+            className="flex shrink-0 items-center gap-3 justify-self-start"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2458d8] text-lg font-black text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#023859] text-lg font-black text-white shadow-sm">
               M
             </span>
 
             <span>
-              <span className="block text-sm font-extrabold tracking-wide">
+              <span className="block text-sm font-extrabold tracking-wide text-[#011C40]">
                 MALAPOTE
               </span>
 
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#26658C]">
                 Rice marketplace
               </span>
             </span>
           </Link>
 
+          {/* CENTERED NAVIGATION */}
           <nav
             aria-label="Customer navigation"
-            className="flex h-full items-center justify-self-center gap-2"
+            className="flex items-center justify-self-center gap-2"
           >
-            {NAVIGATION.map((item) => {
+            {navigation.map((item) => {
               const active = item.label === "My Orders";
 
               return (
@@ -625,68 +819,87 @@ export default function MyOrderPage() {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`flex h-full items-center gap-2 border-b-[3px] px-4 pt-[3px] text-sm font-bold transition ${
+                  className={`relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-[12px] font-bold transition-all duration-200 ${
                     active
-                      ? "border-[#2863ee] text-[#2458d8]"
-                      : "border-transparent text-slate-500 hover:border-blue-200 hover:text-[#2458d8]"
+                      ? "bg-[#023859] text-white shadow-sm"
+                      : "text-[#26658C] hover:bg-[#A7EBF2]/35 hover:text-[#011C40]"
                   }`}
                 >
                   <NavIcon
                     name={item.icon}
                     className="h-[18px] w-[18px]"
                   />
+
                   {item.label}
                 </Link>
               );
             })}
           </nav>
-          <ShopLogoutButton className="justify-self-end" />
+
+          {/* LOGOUT */}
+          <div className="shrink-0 justify-self-end">
+            <ShopLogoutButton className="rounded-xl border border-[#54ACBF]/35 px-3 py-2 text-[12px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/25" />
+          </div>
         </div>
       </header>
 
       {/* MOBILE HEADER */}
-      <header className="sticky top-0 z-30 border-b border-[#e2e9f5] bg-white/95 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 border-b border-[#54ACBF]/25 bg-white/95 shadow-sm backdrop-blur lg:hidden">
         <div className="flex h-[64px] items-center justify-between px-5">
+
+          {/* LOGO */}
           <Link href="/shop/home" className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2458d8] text-base font-black text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#023859] text-base font-black text-white">
               M
             </span>
 
             <span>
-              <span className="block text-sm font-extrabold tracking-wide">
+              <span className="block text-sm font-extrabold tracking-wide text-[#011C40]">
                 MALAPOTE
               </span>
 
-              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-[#26658C]">
                 Rice marketplace
               </span>
             </span>
           </Link>
 
+          {/* CART AND LOGOUT */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#2458d8]">
-              My Orders
-            </span>
-            <ShopLogoutButton className="px-2 text-xs" />
+            <Link
+              href="/shop/cart"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-[#26658C] transition hover:bg-[#A7EBF2]/30 hover:text-[#023859]"
+            >
+              <NavIcon name="cart" className="h-4 w-4" />
+              Cart
+            </Link>
+
+            <ShopLogoutButton className="rounded-lg px-2 py-2 text-xs text-[#26658C] hover:bg-[#A7EBF2]/30" />
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-5 pb-12 pt-8 sm:px-8 sm:pt-10">
+      {/* PAGE CONTENT */}
+      <div className="mx-auto max-w-7xl px-5 pb-12 pt-7 sm:px-8 sm:pt-9">
+
         {/* PAGE TITLE */}
-        <section className="mb-7">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#2863ee]">
+        <section aria-labelledby="orders-title" className="mb-6">
+          <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[1.5px] text-[#54ACBF]">
             Your purchase history
           </p>
 
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+              <h1
+                id="orders-title"
+                className="text-2xl font-serif font-bold tracking-tight text-[#011C40] sm:text-3xl"
+              >
                 My Orders
               </h1>
 
-              <p className="mt-2 text-sm text-slate-500">
-                Track your orders and check their latest delivery status.
+              <p className="mt-1.5 max-w-xl text-sm leading-6 text-[#26658C]">
+                Track your orders, review your purchases, and check their
+                latest delivery status.
               </p>
             </div>
 
@@ -694,68 +907,72 @@ export default function MyOrderPage() {
               type="button"
               onClick={loadOrders}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#dce5f2] bg-white px-4 py-2.5 text-xs font-bold text-[#2458d8] transition hover:bg-blue-50 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#023859] px-5 py-3 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
             >
-              <span>↻</span>
+              <svg
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 7v5h-5" />
+                <path d="M4 17v-5h5" />
+                <path d="M5.6 9a7 7 0 0 1 11.5-2L20 12" />
+                <path d="M18.4 15a7 7 0 0 1-11.5 2L4 12" />
+              </svg>
+
               {loading ? "Refreshing..." : "Refresh Orders"}
             </button>
           </div>
         </section>
 
-        {/* SUMMARY */}
+        {/* SUMMARY CARDS */}
         {!loading && !error && orders.length > 0 && (
-          <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-[#e0e8f4] bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500">
-                Total Orders
-              </p>
+          <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            <SummaryCard
+              label="Total Orders"
+              count={orders.length}
+              type="total"
+            />
 
-              <p className="mt-2 text-2xl font-extrabold text-[#17345c]">
-                {orders.length}
-              </p>
-            </div>
+            <SummaryCard
+              label="Pending"
+              count={pendingCount}
+              type="pending"
+            />
 
-            <div className="rounded-xl border border-amber-100 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500">
-                Pending
-              </p>
+            <SummaryCard
+              label="Processing"
+              count={processingCount}
+              type="processing"
+            />
 
-              <p className="mt-2 text-2xl font-extrabold text-amber-600">
-                {pendingCount}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500">
-                Processing
-              </p>
-
-              <p className="mt-2 text-2xl font-extrabold text-blue-600">
-                {processingCount}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500">
-                Delivered
-              </p>
-
-              <p className="mt-2 text-2xl font-extrabold text-green-600">
-                {deliveredCount}
-              </p>
-            </div>
+            <SummaryCard
+              label="Delivered"
+              count={deliveredCount}
+              type="delivered"
+            />
           </section>
         )}
 
         {/* ORDER HISTORY */}
         <section>
           {!loading && !error && orders.length > 0 && (
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-[#17345c]">
-                Order History
-              </h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-extrabold text-[#011C40]">
+                  Order History
+                </h2>
 
-              <span className="text-xs text-slate-400">
+                <p className="mt-1 text-xs text-[#26658C]">
+                  View the details of your previous purchases.
+                </p>
+              </div>
+
+              <span className="rounded-full border border-[#54ACBF]/25 bg-white px-3 py-1.5 text-[10px] font-bold text-[#26658C]">
                 {orders.length} order{orders.length !== 1 ? "s" : ""}
               </span>
             </div>
@@ -763,30 +980,49 @@ export default function MyOrderPage() {
 
           {/* LOADING */}
           {loading && (
-            <div className="rounded-xl border border-[#e0e8f4] bg-white px-6 py-16 text-center">
-              <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-[#2863ee]" />
+            <div className="rounded-2xl border border-[#54ACBF]/25 bg-white px-6 py-16 text-center shadow-sm">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#A7EBF2] border-t-[#023859]" />
 
-              <p className="mt-4 text-sm font-semibold text-slate-500">
+              <p className="mt-4 text-sm font-bold text-[#26658C]">
                 Loading your orders...
+              </p>
+
+              <p className="mt-1 text-xs text-slate-400">
+                Please wait while we retrieve your purchase history.
               </p>
             </div>
           )}
 
           {/* ERROR */}
           {!loading && error && (
-            <div className="rounded-xl border border-red-200 bg-white px-6 py-12 text-center">
-              <p className="font-extrabold text-red-700">
-                Unable to load your orders
-              </p>
+            <div className="rounded-2xl border border-red-200 bg-white px-6 py-14 text-center shadow-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <svg
+                  className="h-7 w-7"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 8v5M12 16h.01" />
+                </svg>
+              </div>
 
-              <p className="mt-2 text-sm text-slate-500">
+              <h2 className="mt-4 text-base font-extrabold text-red-700">
+                Unable to load your orders
+              </h2>
+
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
                 {error}
               </p>
 
               <button
                 type="button"
                 onClick={loadOrders}
-                className="mt-5 rounded-xl bg-[#2863ee] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#174fcf]"
+                className="mt-5 rounded-xl bg-[#023859] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#011C40]"
               >
                 Try Again
               </button>
@@ -795,32 +1031,33 @@ export default function MyOrderPage() {
 
           {/* EMPTY ORDERS */}
           {!loading && !error && orders.length === 0 && (
-            <div className="rounded-xl border border-dashed border-[#cfd9e8] bg-white px-6 py-16 text-center">
-              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-blue-50 text-[#2863ee]">
+            <div className="rounded-2xl border border-dashed border-[#54ACBF]/40 bg-white px-6 py-16 text-center shadow-sm">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-[#A7EBF2]/30 text-[#023859]">
                 <NavIcon name="orders" className="h-9 w-9" />
               </div>
 
-              <h2 className="text-xl font-extrabold">
+              <h2 className="text-xl font-extrabold text-[#011C40]">
                 No orders yet
               </h2>
 
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#26658C]">
                 You haven&apos;t placed an order yet. Your purchases will
                 appear here once you complete checkout.
               </p>
 
               <Link
                 href="/shop/home"
-                className="mt-6 inline-flex rounded-xl bg-[#2863ee] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#174fcf]"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#023859] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#011C40]"
               >
+                <NavIcon name="shop" className="h-4 w-4" />
                 Browse Rice Products
               </Link>
             </div>
           )}
 
-          {/* COMPACT ORDER LIST */}
+          {/* ORDER LIST */}
           {!loading && !error && orders.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {orders.map((order) => (
                 <OrderRow
                   key={order.id || order.order_code}
@@ -832,13 +1069,13 @@ export default function MyOrderPage() {
         </section>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
+      {/* MOBILE FLOATING BOTTOM NAVIGATION */}
       <nav
         aria-label="Mobile customer navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e0e8f4] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_18px_rgba(24,56,107,0.07)] backdrop-blur lg:hidden"
+        className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-md rounded-2xl border border-[#54ACBF]/30 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_8px_30px_rgba(1,28,64,0.16)] backdrop-blur lg:hidden"
       >
-        <div className="grid grid-cols-4">
-          {NAVIGATION.map((item) => {
+        <div className="grid grid-cols-4 gap-1">
+          {navigation.map((item) => {
             const active = item.label === "My Orders";
 
             return (
@@ -846,18 +1083,23 @@ export default function MyOrderPage() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex min-h-[65px] flex-col items-center justify-center gap-1 text-[10px] font-bold transition ${
+                className={`relative flex min-h-[65px] flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold transition-all duration-200 ${
                   active
-                    ? "text-[#2458d8]"
-                    : "text-slate-400 hover:text-[#2458d8]"
+                    ? "bg-[#023859] text-white shadow-sm"
+                    : "text-[#26658C] hover:bg-[#A7EBF2]/25"
                 }`}
               >
-                <NavIcon name={item.icon} className="h-5 w-5" />
-                <span>{item.label}</span>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
+                    active
+                      ? "bg-[#A7EBF2]/20 text-[#A7EBF2]"
+                      : "text-[#26658C]"
+                  }`}
+                >
+                  <NavIcon name={item.icon} className="h-5 w-5" />
+                </span>
 
-                {active && (
-                  <span className="absolute bottom-[3px] h-1 w-5 rounded-full bg-[#2863ee]" />
-                )}
+                <span>{item.label}</span>
               </Link>
             );
           })}

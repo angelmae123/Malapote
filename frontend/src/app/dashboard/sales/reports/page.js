@@ -12,12 +12,15 @@ const EMPTY_FORM = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-800 focus:ring-2 focus:ring-blue-100";
+  "w-full rounded-xl border border-[#54ACBF]/30 bg-[#A7EBF2]/10 px-3.5 py-2.5 text-[12px] text-[#011C40] outline-none transition placeholder:text-[#26658C]/50 focus:border-[#26658C] focus:bg-white focus:ring-2 focus:ring-[#54ACBF]/15 disabled:cursor-not-allowed disabled:opacity-60";
+
+// RESPONSE HELPERS
 
 function getResponseData(response) {
   if (Array.isArray(response)) return response;
   if (Array.isArray(response?.data)) return response.data;
   if (Array.isArray(response?.data?.data)) return response.data.data;
+
   return [];
 }
 
@@ -40,6 +43,8 @@ function getResponseObject(response) {
 
   return result && typeof result === "object" ? result : null;
 }
+
+// FORMAT HELPERS
 
 function formatCurrency(value) {
   return Number(value || 0).toLocaleString("en-PH", {
@@ -69,7 +74,7 @@ function formatDate(value) {
 }
 
 function getReportCode(report) {
-  if (report.report_id) return report.report_id;
+  if (report.report_id) return String(report.report_id);
 
   if (report.id) {
     return `RPT-${String(report.id).padStart(5, "0")}`;
@@ -78,26 +83,40 @@ function getReportCode(report) {
   return "—";
 }
 
-function SummaryCard({ label, value, description }) {
+// SUMMARY CARD
+
+function SummaryCard({ label, value, description, icon }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-        {label}
-      </p>
+    <div className="flex items-center gap-3 rounded-xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-lg font-bold text-[#26658C]">
+        {icon}
+      </div>
 
-      <p className="mt-3 break-words text-2xl font-semibold text-slate-900">
-        {value}
-      </p>
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium text-[#26658C]">
+          {label}
+        </p>
 
-      <p className="mt-2 text-xs text-slate-400">{description}</p>
+        <p className="mt-0.5 break-words text-xl font-bold text-[#011C40]">
+          {value}
+        </p>
+
+        {description && (
+          <p className="mt-0.5 text-[10px] text-[#26658C]/80">
+            {description}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
+// FORM FIELD
+
 function FormField({ label, required, children }) {
   return (
     <div>
-      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700">
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#023859]">
         {label}
 
         {required && <span className="ml-1 text-red-500">*</span>}
@@ -107,6 +126,8 @@ function FormField({ label, required, children }) {
     </div>
   );
 }
+
+// GRAPH CARD
 
 function GraphCard({
   title,
@@ -123,31 +144,35 @@ function GraphCard({
   );
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+    <section className="rounded-2xl border border-[#54ACBF]/25 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-5">
+        <h2 className="text-base font-bold text-[#011C40]">
+          {title}
+        </h2>
 
-        <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+        <p className="mt-1 text-[11px] text-[#26658C]">
+          {subtitle}
+        </p>
       </div>
 
       {reports.length === 0 ? (
-        <div className="flex h-56 items-center justify-center text-sm text-slate-400">
+        <div className="flex h-56 items-center justify-center text-[11px] text-[#26658C]">
           No report data available for this graph.
         </div>
       ) : (
         <>
-          <div className="flex h-56 items-end gap-3 overflow-x-auto border-b border-slate-200 pb-2">
-            {reports.map((report) => {
+          <div className="flex h-56 items-end gap-3 overflow-x-auto border-b border-[#54ACBF]/20 pb-2">
+            {reports.map((report, index) => {
               const value = Number(report[valueKey] || 0);
               const height = (value / maxValue) * 100;
 
               return (
                 <div
-                  key={report.id}
+                  key={report.id ?? `${report.week_range}-${index}`}
                   className="flex h-full min-w-[65px] flex-1 flex-col items-center justify-end gap-2"
                   title={`${report.week_range}: ${formatter(value)} ${unit}`}
                 >
-                  <span className="max-w-full truncate text-center text-[10px] font-semibold text-slate-600">
+                  <span className="max-w-full truncate text-center text-[10px] font-semibold text-[#023859]">
                     {formatter(value)}
                   </span>
 
@@ -161,7 +186,7 @@ function GraphCard({
                     />
                   </div>
 
-                  <span className="w-full truncate text-center text-[10px] text-slate-500">
+                  <span className="w-full truncate text-center text-[10px] text-[#26658C]">
                     {report.week_range || "Week"}
                   </span>
                 </div>
@@ -169,7 +194,7 @@ function GraphCard({
             })}
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-4 flex items-center justify-between text-[10px] text-[#26658C]">
             <span>Weekly comparison</span>
             <span>Unit: {unit}</span>
           </div>
@@ -179,24 +204,38 @@ function GraphCard({
   );
 }
 
+// MAIN COMPONENT
+
 export default function ReportsPage() {
   const { session } = useAuth();
   const token = session?.accessToken;
 
   const [reports, setReports] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
 
+  const [pageError, setPageError] = useState("");
+
   const [search, setSearch] = useState("");
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [preview, setPreview] = useState(null);
 
+  // LOAD REPORTS
+
   const loadReports = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    setPageError("");
 
     try {
       const response = await apiRequest("sales/reports", {
@@ -205,7 +244,10 @@ export default function ReportsPage() {
 
       setReports(getResponseData(response));
     } catch (err) {
-      toast.error(err.message || "Unable to load weekly reports.");
+      const message = err.message || "Unable to load weekly reports.";
+
+      setPageError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -214,6 +256,8 @@ export default function ReportsPage() {
   useEffect(() => {
     loadReports();
   }, [loadReports]);
+
+  // FILTER REPORTS
 
   const filteredReports = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -236,10 +280,14 @@ export default function ReportsPage() {
       });
   }, [reports, search]);
 
+  // GRAPH DATA
+
   const graphReports = useMemo(
     () => filteredReports.slice(-8),
     [filteredReports]
   );
+
+  // SUMMARY
 
   const summary = useMemo(() => {
     return {
@@ -257,18 +305,19 @@ export default function ReportsPage() {
     };
   }, [reports]);
 
+  // PREVIEW VALIDATION
+
   const previewIsCurrent =
-    preview &&
+    Boolean(preview) &&
     preview.start_date === form.start_date &&
     preview.end_date === form.end_date;
+
+  // MODAL HANDLING
 
   function openAddModal() {
     setEditingReport(null);
     setForm({ ...EMPTY_FORM });
     setPreview(null);
-
-    toast.error("Unable to process this request right now. Please try again.");
-    toast.notice("Notice updated.");
     setModalOpen(true);
   }
 
@@ -282,18 +331,16 @@ export default function ReportsPage() {
 
     // Require a fresh preview before updating.
     setPreview(null);
-
-    toast.error("Unable to process this request right now. Please try again.");
-    toast.notice("Notice updated.");
     setModalOpen(true);
   }
 
   function closeModal() {
+    if (saving || generating) return;
+
     setModalOpen(false);
     setEditingReport(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM });
     setPreview(null);
-    toast.error("Unable to process this request right now. Please try again.");
   }
 
   function handleChange(event) {
@@ -306,8 +353,9 @@ export default function ReportsPage() {
 
     // Previous totals are no longer valid after changing dates.
     setPreview(null);
-    toast.error("Unable to process this request right now. Please try again.");
   }
+
+  // GENERATE REPORT PREVIEW
 
   async function handleGenerateReport() {
     setPreview(null);
@@ -354,12 +402,16 @@ export default function ReportsPage() {
         total_production: Number(result.total_production || 0),
         generated_date: result.generated_date || "",
       });
+
+      toast.success("Report preview generated successfully.");
     } catch (err) {
       toast.error(err.message || "Unable to generate weekly report.");
     } finally {
       setGenerating(false);
     }
   }
+
+  // SAVE REPORT
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -407,7 +459,11 @@ export default function ReportsPage() {
         toast.success("Weekly report saved successfully.");
       }
 
-      closeModal();
+      setModalOpen(false);
+      setEditingReport(null);
+      setForm({ ...EMPTY_FORM });
+      setPreview(null);
+
       await loadReports();
     } catch (err) {
       toast.error(err.message || "Unable to save weekly report.");
@@ -415,6 +471,8 @@ export default function ReportsPage() {
       setSaving(false);
     }
   }
+
+  // DELETE REPORT
 
   async function handleDelete(report) {
     const confirmed = window.confirm(
@@ -436,21 +494,25 @@ export default function ReportsPage() {
     }
   }
 
+  // PAGE
+
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-800 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-[#F3F8FA] p-3 text-[#011C40] sm:p-5 lg:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+
         {/* HEADER */}
-        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+
+        <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-blue-900">
-              Sales Management
+            <p className="mb-1 text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+              SALES MANAGEMENT
             </p>
 
-            <h1 className="font-serif text-3xl font-semibold text-slate-900">
+            <h1 className="font-serif text-xl tracking-tight text-[#011C40] sm:text-2xl">
               Weekly Reports
             </h1>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-1 text-[12px] text-[#26658C]">
               Review weekly sales and milled rice production performance.
             </p>
           </div>
@@ -458,53 +520,109 @@ export default function ReportsPage() {
           <button
             type="button"
             onClick={openAddModal}
-            className="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800"
+            className="rounded-xl bg-[#023859] px-4 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#011C40]"
           >
             + Generate Report
           </button>
         </header>
 
         {/* SUMMARY */}
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryCard
-            label="Total Reports"
-            value={formatNumber(summary.totalReports)}
-            description="Saved weekly reports"
-          />
 
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <SummaryCard
             label="Total Sales"
             value={formatCurrency(summary.totalSales)}
-            description="Combined paid sales from saved reports"
+            description="Combined sales from saved reports"
+            icon="₱"
           />
 
           <SummaryCard
             label="Total Production"
             value={`${formatNumber(summary.totalProduction)} kg`}
             description="Combined milled rice output"
+            icon="▤"
           />
         </section>
 
-        {/* GRAPHS */}
+        {/* REPORT BREAKDOWN */}
+
+        <section className="rounded-xl border border-[#54ACBF]/25 bg-[#A7EBF2]/15 p-4">
+          <div className="mb-3">
+            <h2 className="text-[12px] font-bold text-[#011C40]">
+              Report Overview
+            </h2>
+
+            <p className="mt-0.5 text-[10px] text-[#26658C]">
+              Summary of saved weekly report records.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-[#54ACBF]/15 bg-white/80 px-3 py-2.5">
+              <p className="text-[10px] font-medium text-[#26658C]">
+                Total Reports
+              </p>
+
+              <p className="mt-1 text-lg font-bold text-[#011C40]">
+                {formatNumber(summary.totalReports)}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-[#54ACBF]/15 bg-white/80 px-3 py-2.5">
+              <p className="text-[10px] font-medium text-[#26658C]">
+                Displayed Reports
+              </p>
+
+              <p className="mt-1 text-lg font-bold text-[#011C40]">
+                {formatNumber(filteredReports.length)}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-[#54ACBF]/15 bg-white/80 px-3 py-2.5">
+              <p className="text-[10px] font-medium text-[#26658C]">
+                Graph Coverage
+              </p>
+
+              <p className="mt-1 text-lg font-bold text-[#011C40]">
+                {formatNumber(graphReports.length)} / 8
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* PAGE ERROR */}
+
+        {pageError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[11px] text-red-700">
+            {pageError}
+          </div>
+        )}
+
+        {/* PERFORMANCE GRAPHS */}
+
         <section>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-slate-900">
+          <div className="mb-3">
+            <p className="mb-1 text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+              ANALYTICS
+            </p>
+
+            <h2 className="text-base font-bold text-[#011C40]">
               Performance Overview
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Graphs are generated from your saved weekly report records.
+            <p className="mt-1 text-[11px] text-[#26658C]">
+              Weekly sales and production comparison from saved report records.
               Showing up to the latest eight matching reports.
             </p>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-3 xl:grid-cols-2">
             <GraphCard
               title="Weekly Sales"
               subtitle="Total sales for each reporting period"
               reports={graphReports}
               valueKey="total_sales"
-              color="bg-blue-900"
+              color="bg-[#26658C]"
               formatter={formatCurrency}
               unit="PHP"
             />
@@ -514,7 +632,7 @@ export default function ReportsPage() {
               subtitle="Total milled rice output for each reporting period"
               reports={graphReports}
               valueKey="total_production"
-              color="bg-sky-600"
+              color="bg-[#54ACBF]"
               formatter={formatNumber}
               unit="kg"
             />
@@ -522,14 +640,18 @@ export default function ReportsPage() {
         </section>
 
         {/* REPORT HISTORY */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
+
+        <section className="overflow-hidden rounded-2xl border border-[#54ACBF]/25 bg-white shadow-sm">
+
+          {/* TABLE HEADER */}
+
+          <div className="flex flex-col gap-3 border-b border-[#A7EBF2]/50 p-4 sm:px-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-base font-bold text-[#011C40]">
                 Report Records
               </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-[11px] text-[#26658C]">
                 View and manage your saved sales and production reports.
               </p>
             </div>
@@ -540,41 +662,45 @@ export default function ReportsPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search reporting period..."
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm outline-none focus:border-blue-800"
+                className={`${inputClass} sm:w-56`}
               />
 
               <button
                 type="button"
                 onClick={loadReports}
                 disabled={loading}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-4 py-2 text-[11px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? "Refreshing..." : "Refresh"}
               </button>
             </div>
           </div>
 
+          {/* TABLE */}
+
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[950px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+            <table className="w-full min-w-[950px] text-left text-[11px]">
+
+              <thead className="bg-[#A7EBF2]/20 text-[10px] uppercase tracking-wider text-[#023859]">
                 <tr>
-                  <th className="px-5 py-4">Report Code</th>
-                  <th className="px-5 py-4">Reporting Period</th>
-                  <th className="px-5 py-4">Start Date</th>
-                  <th className="px-5 py-4">End Date</th>
-                  <th className="px-5 py-4">Sales</th>
-                  <th className="px-5 py-4">Production</th>
-                  <th className="px-5 py-4">Generated</th>
-                  <th className="px-5 py-4 text-right">Actions</th>
+                  <th className="px-4 py-3">Report Code</th>
+                  <th className="px-4 py-3">Reporting Period</th>
+                  <th className="px-4 py-3">Start Date</th>
+                  <th className="px-4 py-3">End Date</th>
+                  <th className="px-4 py-3">Sales</th>
+                  <th className="px-4 py-3">Production</th>
+                  <th className="px-4 py-3">Generated</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#A7EBF2]/30">
+
                 {loading ? (
                   <tr>
                     <td
                       colSpan="8"
-                      className="px-5 py-12 text-center text-slate-500"
+                      className="px-4 py-12 text-center text-[11px] text-[#26658C]"
                     >
                       Loading reports...
                     </td>
@@ -583,48 +709,51 @@ export default function ReportsPage() {
                   <tr>
                     <td
                       colSpan="8"
-                      className="px-5 py-12 text-center text-slate-500"
+                      className="px-4 py-12 text-center text-[11px] text-[#26658C]"
                     >
                       No weekly reports found.
                     </td>
                   </tr>
                 ) : (
                   [...filteredReports].reverse().map((report) => (
-                    <tr key={report.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-4 font-semibold text-blue-900">
+                    <tr
+                      key={report.id}
+                      className="transition hover:bg-[#A7EBF2]/10"
+                    >
+                      <td className="px-4 py-3 font-bold text-[#26658C]">
                         {getReportCode(report)}
                       </td>
 
-                      <td className="px-5 py-4 font-semibold text-slate-900">
+                      <td className="px-4 py-3 font-semibold text-[#011C40]">
                         {report.week_range || "—"}
                       </td>
 
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-3 text-[#26658C]">
                         {formatDate(report.start_date)}
                       </td>
 
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-3 text-[#26658C]">
                         {formatDate(report.end_date)}
                       </td>
 
-                      <td className="px-5 py-4 font-medium">
+                      <td className="px-4 py-3 font-semibold text-[#011C40]">
                         {formatCurrency(report.total_sales)}
                       </td>
 
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-3 font-semibold text-[#011C40]">
                         {formatNumber(report.total_production)} kg
                       </td>
 
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-3 text-[#26658C]">
                         {formatDate(report.generated_date)}
                       </td>
 
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => openEditModal(report)}
-                            className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-900 hover:bg-blue-50"
+                            className="rounded-lg border border-[#54ACBF]/30 bg-[#A7EBF2]/20 px-3 py-2 text-[10px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/60"
                           >
                             Edit
                           </button>
@@ -632,7 +761,7 @@ export default function ReportsPage() {
                           <button
                             type="button"
                             onClick={() => handleDelete(report)}
-                            className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-semibold text-red-700 transition hover:bg-red-100"
                           >
                             Delete
                           </button>
@@ -641,39 +770,54 @@ export default function ReportsPage() {
                     </tr>
                   ))
                 )}
+
               </tbody>
             </table>
           </div>
 
-          <div className="border-t border-slate-200 px-5 py-4 text-xs text-slate-500">
-            Showing {filteredReports.length} of {reports.length} reports
+          {/* TABLE FOOTER */}
+
+          <div className="border-t border-[#A7EBF2]/40 bg-[#A7EBF2]/10 px-4 py-3">
+            <p className="text-[10px] text-[#26658C]">
+              Showing {filteredReports.length} of {reports.length} reports
+            </p>
           </div>
+
         </section>
       </div>
 
       {/* GENERATE / EDIT MODAL */}
+
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
-          <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#011C40]/60 p-3 backdrop-blur-sm sm:p-5">
+
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#54ACBF]/30 bg-white shadow-2xl">
+
             {/* MODAL HEADER */}
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+
+            <div className="flex items-center justify-between border-b border-[#A7EBF2]/60 px-5 py-4 sm:px-6">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-900">
-                  Sales Management
+                <p className="text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+                  SALES MANAGEMENT
                 </p>
 
-                <h2 className="mt-1 font-serif text-xl font-semibold text-slate-900">
+                <h2 className="mt-1 text-lg font-bold text-[#011C40]">
                   {editingReport
                     ? "Update Weekly Report"
                     : "Generate Weekly Report"}
                 </h2>
+
+                <p className="mt-0.5 text-[11px] text-[#26658C]">
+                  Select a reporting period and preview the calculated totals.
+                </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeModal}
                 disabled={saving || generating}
-                className="rounded-lg px-3 py-2 text-xl text-slate-500 hover:bg-slate-100"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-xl text-[#26658C] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                aria-label="Close modal"
               >
                 ×
               </button>
@@ -683,27 +827,28 @@ export default function ReportsPage() {
               onSubmit={handleSubmit}
               className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="flex-1 space-y-5 overflow-y-auto p-6">
-                {error && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                )}
 
-                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                  <p className="text-sm font-semibold text-blue-900">
+              {/* MODAL CONTENT */}
+
+              <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
+
+                {/* INFORMATION */}
+
+                <div className="rounded-xl border border-[#54ACBF]/25 bg-[#A7EBF2]/15 p-4">
+                  <p className="text-[11px] font-bold text-[#023859]">
                     Automatic Report Generation
                   </p>
 
-                  <p className="mt-1 text-xs leading-relaxed text-blue-800">
-                    Select the reporting period. The system will automatically
-                    calculate paid sales transactions and paid, non-cancelled
-                    shop orders, along with completed milled rice production
-                    within the selected dates.
+                  <p className="mt-1 text-[10px] leading-relaxed text-[#26658C]">
+                    Select the reporting period. The system calculates sales
+                    transactions and completed milled rice production within
+                    the selected dates. Report totals are generated by the
+                    backend and cannot be manually edited.
                   </p>
                 </div>
 
                 {/* DATE RANGE */}
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField label="Start Date" required>
                     <input
@@ -712,6 +857,7 @@ export default function ReportsPage() {
                       value={form.start_date}
                       onChange={handleChange}
                       required
+                      disabled={saving || generating}
                       className={inputClass}
                     />
                   </FormField>
@@ -724,99 +870,106 @@ export default function ReportsPage() {
                       onChange={handleChange}
                       min={form.start_date || undefined}
                       required
+                      disabled={saving || generating}
                       className={inputClass}
                     />
                   </FormField>
                 </div>
 
                 {/* GENERATE BUTTON */}
+
                 <button
                   type="button"
                   onClick={handleGenerateReport}
                   disabled={generating || saving}
-                  className="w-full rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-xl bg-[#023859] px-5 py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {generating
                     ? "Calculating Report..."
-                    : "Generate Weekly Report"}
+                    : "Generate Report Preview"}
                 </button>
 
-                {/* COMPUTED PREVIEW */}
-                {previewIsCurrent && (
-                  <section className="space-y-4 rounded-2xl border border-green-200 bg-green-50/50 p-5">
+                {/* REPORT PREVIEW */}
+
+                {previewIsCurrent ? (
+                  <section className="space-y-4 rounded-xl border border-[#54ACBF]/30 bg-[#A7EBF2]/10 p-4">
+
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-green-800">
-                        Report Preview
+                      <p className="text-[9px] font-extrabold tracking-[1.5px] text-[#54ACBF]">
+                        REPORT PREVIEW
                       </p>
 
-                      <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                      <h3 className="mt-1 text-base font-bold text-[#011C40]">
                         {preview.week_range || "Selected Reporting Period"}
                       </h3>
 
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-[10px] text-[#26658C]">
                         {formatDate(preview.start_date)} –{" "}
                         {formatDate(preview.end_date)}
                       </p>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl border border-slate-200 bg-white p-4">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+
+                      <div className="rounded-xl border border-[#54ACBF]/20 bg-white p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#26658C]">
                           Total Sales
                         </p>
 
-                        <p className="mt-2 text-2xl font-semibold text-blue-900">
+                        <p className="mt-2 break-words text-xl font-bold text-[#023859]">
                           {formatCurrency(preview.total_sales)}
                         </p>
 
-                        <p className="mt-1 text-xs text-slate-400">
-                          Paid transactions and paid orders
+                        <p className="mt-1 text-[10px] text-[#26658C]">
+                          Sales within selected period
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-slate-200 bg-white p-4">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      <div className="rounded-xl border border-[#54ACBF]/20 bg-white p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#26658C]">
                           Total Production
                         </p>
 
-                        <p className="mt-2 text-2xl font-semibold text-green-800">
+                        <p className="mt-2 text-xl font-bold text-[#023859]">
                           {formatNumber(preview.total_production)} kg
                         </p>
 
-                        <p className="mt-1 text-xs text-slate-400">
-                          Completed milled rice only
+                        <p className="mt-1 text-[10px] text-[#26658C]">
+                          Completed milled rice output
                         </p>
                       </div>
+
                     </div>
 
-                    <p className="text-xs leading-relaxed text-slate-500">
-                      These values are calculated from the database. They
-                      cannot be manually edited. The server will calculate
-                      them again when you save the report.
+                    <p className="text-[10px] leading-relaxed text-[#26658C]">
+                      These values are calculated from the database and cannot
+                      be manually edited. The server will calculate them again
+                      when you save the report.
                     </p>
                   </section>
-                )}
-
-                {!previewIsCurrent && (
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
-                    <p className="text-sm font-medium text-slate-600">
+                ) : (
+                  <div className="rounded-xl border border-dashed border-[#54ACBF]/40 bg-[#A7EBF2]/10 p-5 text-center">
+                    <p className="text-[11px] font-semibold text-[#023859]">
                       No report preview generated yet.
                     </p>
 
-                    <p className="mt-1 text-xs text-slate-400">
-                      Select your date range and click Generate Weekly Report.
+                    <p className="mt-1 text-[10px] text-[#26658C]">
+                      Select your date range and click Generate Report Preview.
                     </p>
                   </div>
                 )}
+
               </div>
 
               {/* MODAL FOOTER */}
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+
+              <div className="flex flex-col-reverse gap-2 border-t border-[#A7EBF2]/50 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={saving || generating}
-                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+                  className="rounded-xl border border-[#54ACBF]/30 bg-white px-4 py-2.5 text-[11px] font-semibold text-[#26658C] transition hover:bg-[#A7EBF2]/20 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -824,7 +977,7 @@ export default function ReportsPage() {
                 <button
                   type="submit"
                   disabled={saving || generating || !previewIsCurrent}
-                  className="rounded-xl bg-green-700 px-6 py-2.5 text-sm font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-[#023859] px-5 py-2.5 text-[11px] font-semibold text-white transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving
                     ? "Saving..."
@@ -832,6 +985,7 @@ export default function ReportsPage() {
                       ? "Save Changes"
                       : "Save Report"}
                 </button>
+
               </div>
             </form>
           </div>

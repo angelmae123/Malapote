@@ -51,9 +51,7 @@ function formatNumber(value) {
 }
 
 function getSackWeight(product) {
-  return Number(
-    product?.sack_size_kg ?? product?.sack_weight_kg ?? 0
-  );
+  return Number(product?.sack_size_kg ?? product?.sack_weight_kg ?? 0);
 }
 
 function isLooseRice(product) {
@@ -73,11 +71,7 @@ function getPriceLabel(product) {
 }
 
 function getSellableQuantity(product) {
-  const stock = Math.max(
-    0,
-    Number(product?.stock_quantity || 0)
-  );
-
+  const stock = Math.max(0, Number(product?.stock_quantity || 0));
   const sackWeight = getSackWeight(product);
 
   if (sackWeight > 0) {
@@ -88,11 +82,7 @@ function getSellableQuantity(product) {
 }
 
 function getStockLabel(product) {
-  const stock = Math.max(
-    0,
-    Number(product?.stock_quantity || 0)
-  );
-
+  const stock = Math.max(0, Number(product?.stock_quantity || 0));
   const sackWeight = getSackWeight(product);
 
   if (sackWeight > 0) {
@@ -186,11 +176,7 @@ function NavIcon({ name, className = "h-5 w-5" }) {
 
 function RiceBagArtwork({ className = "h-36 w-36 drop-shadow-lg" }) {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 160 160"
-      className={className}
-    >
+    <svg aria-hidden="true" viewBox="0 0 160 160" className={className}>
       <path
         d="m49 34 13-9h36l13 9 10 101H39L49 34Z"
         fill="#fffdf7"
@@ -265,7 +251,7 @@ function ProductArtwork({ product, compact = false }) {
   if (image) {
     return (
       <div
-        className={`relative flex items-center justify-center overflow-hidden bg-[#f3f6fc] ${artworkClass}`}
+        className={`relative flex items-center justify-center overflow-hidden bg-[#A7EBF2]/15 ${artworkClass}`}
       >
         <Image
           src={image}
@@ -281,7 +267,7 @@ function ProductArtwork({ product, compact = false }) {
 
   return (
     <div
-      className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#e7efff] via-[#f5f7fc] to-[#e9f4e7] ${artworkClass}`}
+      className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#A7EBF2]/40 via-[#F3F8FA] to-[#54ACBF]/20 ${artworkClass}`}
     >
       {!compact && (
         <>
@@ -295,7 +281,7 @@ function ProductArtwork({ product, compact = false }) {
       />
 
       {!compact && product?.category && (
-        <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+        <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#26658C]">
           {product.category}
         </span>
       )}
@@ -312,13 +298,14 @@ export default function ShopHomePage() {
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedProductId, setSelectedProductId] = useState("");
-
-  // Sack quantity = number of sacks.
-  // Loose rice quantity = kilograms.
   const [quantities, setQuantities] = useState({});
-  const selectedProduct = selectedGroup?.items.find(
-    (product) => String(product.id) === selectedProductId
-  ) || selectedGroup?.items[0] || null;
+
+  const selectedProduct =
+    selectedGroup?.items.find(
+      (product) => String(product.id) === selectedProductId
+    ) ||
+    selectedGroup?.items[0] ||
+    null;
 
   useEffect(() => {
     if (!selectedGroup) return undefined;
@@ -346,23 +333,16 @@ export default function ShopHomePage() {
       catalog.forEach((product) => {
         const id = String(product.id);
         const stock = getSellableQuantity(product);
-
-        const current =
-          next[id] === "" ? "" : Number(next[id] ?? 1);
+        const current = next[id] === "" ? "" : Number(next[id] ?? 1);
 
         if (stock <= 0) {
           next[id] = 1;
           return;
         }
 
-        if (current === "") {
-          return;
-        }
+        if (current === "") return;
 
-        next[id] = Math.max(
-          1,
-          Math.min(stock, current)
-        );
+        next[id] = Math.max(1, Math.min(stock, current));
       });
 
       return next;
@@ -379,12 +359,8 @@ export default function ShopHomePage() {
       setProducts(catalog);
       updateProductQuantities(catalog);
     } catch (requestError) {
-      setError(
-        requestError.message || "Unable to load rice products."
-      );
-      toast.error(
-        requestError.message || "Unable to load rice products."
-      );
+      setError(requestError.message || "Unable to load rice products.");
+      toast.error(requestError.message || "Unable to load rice products.");
     } finally {
       setLoading(false);
     }
@@ -403,18 +379,12 @@ export default function ShopHomePage() {
       })
       .catch((requestError) => {
         if (!cancelled) {
-          setError(
-            requestError.message || "Unable to load rice products."
-          );
-          toast.error(
-            requestError.message || "Unable to load rice products."
-          );
+          setError(requestError.message || "Unable to load rice products.");
+          toast.error(requestError.message || "Unable to load rice products.");
         }
       })
       .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       });
 
     return () => {
@@ -451,9 +421,7 @@ export default function ShopHomePage() {
       const current = Number(previous[id] ?? 1);
       const next = current + change;
 
-      if (next < 1 || next > stock) {
-        return previous;
-      }
+      if (next < 1 || next > stock) return previous;
 
       return {
         ...previous,
@@ -492,7 +460,6 @@ export default function ShopHomePage() {
           toast.error(
             `Please enter a valid quantity. Available stock: ${formatNumber(stock)} ${isLooseRice(product) ? "kg" : "sacks"}.`
           );
-
           return;
         }
 
@@ -517,14 +484,8 @@ export default function ShopHomePage() {
           [String(product.id)]: 1,
         }));
       } catch (cartError) {
-        console.error(
-          "Unable to add product to shopping cart:",
-          cartError
-        );
-
-        toast.error(
-          cartError.message || "Unable to add product to your cart."
-        );
+        console.error("Unable to add product to shopping cart:", cartError);
+        toast.error(cartError.message || "Unable to add product to your cart.");
       }
     },
     [quantities]
@@ -532,11 +493,7 @@ export default function ShopHomePage() {
 
   const categories = useMemo(
     () => [
-      ...new Set(
-        products
-          .map((product) => product.category)
-          .filter(Boolean)
-      ),
+      ...new Set(products.map((product) => product.category).filter(Boolean)),
     ],
     [products]
   );
@@ -561,9 +518,7 @@ export default function ShopHomePage() {
         !keyword ||
         searchableFields
           .filter(Boolean)
-          .some((value) =>
-            String(value).toLowerCase().includes(keyword)
-          );
+          .some((value) => String(value).toLowerCase().includes(keyword));
 
       return matchesCategory && matchesSearch;
     });
@@ -594,32 +549,34 @@ export default function ShopHomePage() {
   }, [activeCategory, products, search]);
 
   return (
-    <main className="min-h-screen bg-[#f1f5fd] pb-24 text-[#17345c] lg:pb-0">
+    <main className="min-h-screen bg-[#F3F8FA] pb-28 text-[#011C40] lg:pb-0">
       {/* DESKTOP HEADER */}
-      <header className="sticky top-0 z-30 hidden border-b border-[#e2e9f5] bg-white/95 backdrop-blur lg:block">
-        <div className="mx-auto grid h-[76px] max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-6 px-5 sm:px-8">
+      <header className="sticky top-0 z-30 hidden border-b border-[#54ACBF]/25 bg-white/95 shadow-sm backdrop-blur lg:block">
+        <div className="mx-auto grid h-[76px] max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-5 sm:px-8">
+          {/* LOGO - LEFT */}
           <Link
             href="/shop/home"
-            className="flex shrink-0 items-center gap-3"
+            className="flex shrink-0 items-center gap-3 justify-self-start"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2458d8] text-lg font-black text-white shadow-sm">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#023859] text-lg font-black text-white shadow-sm">
               M
             </span>
 
             <span>
-              <span className="block text-sm font-extrabold tracking-wide">
+              <span className="block text-sm font-extrabold tracking-wide text-[#011C40]">
                 MALAPOTE
               </span>
 
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#26658C]">
                 Rice marketplace
               </span>
             </span>
           </Link>
 
+          {/* NAVIGATION - PERFECTLY CENTERED */}
           <nav
             aria-label="Customer navigation"
-            className="flex h-full items-center justify-self-center gap-2"
+            className="flex items-center justify-self-center gap-2"
           >
             {navigation.map((item) => {
               const active = item.label === "Shop";
@@ -629,21 +586,18 @@ export default function ShopHomePage() {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`flex h-full items-center gap-2 border-b-[3px] px-4 pt-[3px] text-sm font-bold transition ${
+                  className={`relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-[12px] font-bold transition-all duration-200 ${
                     active
-                      ? "border-[#2863ee] text-[#2458d8]"
-                      : "border-transparent text-slate-500 hover:border-blue-200 hover:text-[#2458d8]"
+                      ? "bg-[#023859] text-white shadow-sm"
+                      : "text-[#26658C] hover:bg-[#A7EBF2]/35 hover:text-[#011C40]"
                   }`}
                 >
-                  <NavIcon
-                    name={item.icon}
-                    className="h-[18px] w-[18px]"
-                  />
+                  <NavIcon name={item.icon} className="h-[18px] w-[18px]" />
 
                   {item.label}
 
                   {item.label === "Cart" && cartCount > 0 && (
-                    <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2863ee] px-1 text-[10px] font-extrabold text-white">
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#54ACBF] px-1 text-[10px] font-extrabold text-white">
                       {cartCount}
                     </span>
                   )}
@@ -652,27 +606,27 @@ export default function ShopHomePage() {
             })}
           </nav>
 
-          <ShopLogoutButton className="justify-self-end" />
+          {/* LOGOUT - RIGHT */}
+          <div className="shrink-0 justify-self-end">
+            <ShopLogoutButton className="rounded-xl border border-[#54ACBF]/35 px-3 py-2 text-[12px] font-semibold text-[#023859] transition hover:bg-[#A7EBF2]/25" />
+          </div>
         </div>
       </header>
 
       {/* MOBILE HEADER */}
-      <header className="sticky top-0 z-30 border-b border-[#e2e9f5] bg-white/95 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 border-b border-[#54ACBF]/25 bg-white/95 shadow-sm backdrop-blur lg:hidden">
         <div className="flex h-[64px] items-center justify-between px-5">
-          <Link
-            href="/shop/home"
-            className="flex items-center gap-3"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2458d8] text-base font-black text-white">
+          <Link href="/shop/home" className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#023859] text-base font-black text-white">
               M
             </span>
 
             <span>
-              <span className="block text-sm font-extrabold tracking-wide">
+              <span className="block text-sm font-extrabold tracking-wide text-[#011C40]">
                 MALAPOTE
               </span>
 
-              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-[#26658C]">
                 Rice marketplace
               </span>
             </span>
@@ -681,18 +635,19 @@ export default function ShopHomePage() {
           <div className="flex items-center gap-2">
             <Link
               href="/shop/cart"
-              className="flex items-center gap-2 text-xs font-semibold text-[#2458d8]"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-[#023859] transition hover:bg-[#A7EBF2]/30"
             >
+              <NavIcon name="cart" className="h-4 w-4" />
               Cart
 
               {cartCount > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2863ee] px-1 text-[10px] font-extrabold text-white">
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#023859] px-1 text-[10px] font-extrabold text-white">
                   {cartCount}
                 </span>
               )}
             </Link>
 
-            <ShopLogoutButton className="px-2 text-xs" />
+            <ShopLogoutButton className="rounded-lg px-2 py-2 text-xs text-[#26658C] hover:bg-[#A7EBF2]/30" />
           </div>
         </div>
       </header>
@@ -700,44 +655,47 @@ export default function ShopHomePage() {
       <div className="mx-auto max-w-7xl px-5 pb-12 pt-7 sm:px-8 sm:pt-9">
         {/* PAGE TITLE */}
         <section aria-labelledby="home-title" className="mb-6">
+          <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[1.5px] text-[#54ACBF]">
+            Customer marketplace
+          </p>
+
           <h1
             id="home-title"
-            className="text-[30px] font-extrabold leading-tight tracking-tight sm:text-4xl"
+            className="text-2xl font-serif font-bold tracking-tight text-[#011C40] sm:text-3xl"
           >
             Home
           </h1>
 
-          <p className="mt-1.5 text-sm text-slate-500 sm:text-base">
+          <p className="mt-1.5 text-sm text-[#26658C]">
             Welcome! Find your favorite rice products.
           </p>
         </section>
 
         {/* HERO */}
-        <section className="relative isolate mb-5 overflow-hidden rounded-[24px] bg-gradient-to-r from-[#2149aa] via-[#285dd5] to-[#316cf5] px-7 py-9 text-white shadow-sm sm:min-h-[300px] sm:px-12 sm:py-11">
+        <section className="relative isolate mb-5 overflow-hidden rounded-2xl bg-gradient-to-r from-[#011C40] via-[#023859] to-[#26658C] px-7 py-9 text-white shadow-sm sm:min-h-[300px] sm:px-12 sm:py-11">
           <div className="absolute -right-16 -top-28 -z-10 h-80 w-80 rounded-full border-[34px] border-white/[0.06]" />
-
-          <div className="absolute -bottom-36 right-[17%] -z-10 h-72 w-72 rounded-full bg-white/[0.05]" />
+          <div className="absolute -bottom-36 right-[17%] -z-10 h-72 w-72 rounded-full bg-[#A7EBF2]/10" />
 
           <div className="relative z-10 max-w-2xl">
-            <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-blue-100 sm:text-xs">
+            <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-[#A7EBF2] sm:text-xs">
               AgriStock Marketplace
             </p>
 
             <h2 className="text-[34px] font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
               Good food starts
-              <span className="mt-1 block text-blue-200">
+              <span className="mt-1 block text-[#A7EBF2]">
                 with good rice.
               </span>
             </h2>
 
-            <p className="mt-4 max-w-xl text-sm leading-6 text-blue-50 sm:text-base">
+            <p className="mt-4 max-w-xl text-sm leading-6 text-white/85 sm:text-base">
               Quality rice for everyday meals, family gatherings, and
               everything in between.
             </p>
 
             <a
               href="#products"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#17345c] shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-50"
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#A7EBF2] px-5 py-3 text-sm font-bold text-[#011C40] shadow-sm transition hover:-translate-y-0.5 hover:bg-white"
             >
               Explore products <span aria-hidden="true">→</span>
             </a>
@@ -753,26 +711,22 @@ export default function ShopHomePage() {
               >
                 <path
                   d="M32 54V13"
-                  stroke="#55A94F"
+                  stroke="#A7EBF2"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
-
                 <path
                   d="M31 34c-10 0-15-6-15-13 8 0 14 4 15 13Z"
-                  fill="#76C567"
+                  fill="#54ACBF"
                 />
-
                 <path
                   d="M33 25c1-8 7-13 15-13 0 7-5 13-15 13Z"
-                  fill="#8AD271"
+                  fill="#A7EBF2"
                 />
-
                 <path
                   d="M32 46c-8 0-12-5-12-11 7 0 11 4 12 11Z"
-                  fill="#76C567"
+                  fill="#54ACBF"
                 />
-
                 <ellipse
                   cx="22"
                   cy="14"
@@ -781,7 +735,6 @@ export default function ShopHomePage() {
                   transform="rotate(-24 22 14)"
                   fill="#FFC947"
                 />
-
                 <ellipse
                   cx="41"
                   cy="8"
@@ -790,7 +743,6 @@ export default function ShopHomePage() {
                   transform="rotate(18 41 8)"
                   fill="#FFC947"
                 />
-
                 <ellipse
                   cx="48"
                   cy="15"
@@ -801,11 +753,10 @@ export default function ShopHomePage() {
                 />
               </svg>
 
-              <div className="absolute -bottom-2 right-0 rounded-xl bg-white px-4 py-3 text-[#17345c] shadow-lg">
-                <span className="block text-[10px] text-slate-500">
+              <div className="absolute -bottom-2 right-0 rounded-xl bg-white px-4 py-3 text-[#011C40] shadow-lg">
+                <span className="block text-[10px] text-[#26658C]">
                   Quality grains
                 </span>
-
                 <span className="block text-xs font-extrabold">
                   Made for your home
                 </span>
@@ -819,51 +770,43 @@ export default function ShopHomePage() {
           aria-label="Shopping benefits"
           className="mb-8 grid gap-3 sm:grid-cols-3"
         >
-          <div className="flex min-h-[82px] items-center gap-3.5 rounded-2xl border border-[#e0e8f4] bg-white px-4 py-4 shadow-sm sm:px-5">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ff] text-xl text-[#2458d8]">
+          <div className="flex min-h-[82px] items-center gap-3.5 rounded-xl border border-[#54ACBF]/25 bg-white px-4 py-4 shadow-sm sm:px-5">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-xl text-[#023859]">
               ✳
             </span>
-
             <span>
-              <span className="block text-xs text-slate-500">
+              <span className="block text-xs text-[#26658C]">
                 Rice varieties
               </span>
-
-              <span className="block text-base font-extrabold leading-6 tracking-tight sm:text-lg">
-                {loading
-                  ? "Loading..."
-                  : `${groupedProducts.length} available`}
+              <span className="block text-base font-extrabold leading-6 tracking-tight text-[#011C40] sm:text-lg">
+                {loading ? "Loading..." : `${groupedProducts.length} available`}
               </span>
             </span>
           </div>
 
-          <div className="flex min-h-[82px] items-center gap-3.5 rounded-2xl border border-[#e0e8f4] bg-white px-4 py-4 shadow-sm sm:px-5">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ff] text-[#2458d8]">
+          <div className="flex min-h-[82px] items-center gap-3.5 rounded-xl border border-[#54ACBF]/25 bg-white px-4 py-4 shadow-sm sm:px-5">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-[#023859]">
               <NavIcon name="orders" />
             </span>
-
             <span>
-              <span className="block text-xs text-slate-500">
+              <span className="block text-xs text-[#26658C]">
                 Easy ordering
               </span>
-
-              <span className="block text-base font-extrabold leading-6 tracking-tight sm:text-lg">
+              <span className="block text-base font-extrabold leading-6 tracking-tight text-[#011C40] sm:text-lg">
                 Simple &amp; convenient
               </span>
             </span>
           </div>
 
-          <div className="flex min-h-[82px] items-center gap-3.5 rounded-2xl border border-[#e0e8f4] bg-white px-4 py-4 shadow-sm sm:px-5">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ff] text-[#2458d8]">
+          <div className="flex min-h-[82px] items-center gap-3.5 rounded-xl border border-[#54ACBF]/25 bg-white px-4 py-4 shadow-sm sm:px-5">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#A7EBF2]/40 text-[#023859]">
               <span className="text-xl font-bold">₱</span>
             </span>
-
             <span>
-              <span className="block text-xs text-slate-500">
+              <span className="block text-xs text-[#26658C]">
                 Budget friendly
               </span>
-
-              <span className="block text-base font-extrabold leading-6 tracking-tight sm:text-lg">
+              <span className="block text-base font-extrabold leading-6 tracking-tight text-[#011C40] sm:text-lg">
                 Fair prices every day
               </span>
             </span>
@@ -878,18 +821,16 @@ export default function ShopHomePage() {
         >
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#54ACBF]">
                 Our selection
               </p>
-
               <h2
                 id="products-title"
-                className="text-2xl font-extrabold tracking-tight sm:text-[28px]"
+                className="text-2xl font-extrabold tracking-tight text-[#011C40] sm:text-[28px]"
               >
                 Rice varieties
               </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-[#26658C]">
                 Choose a rice variety, then select your preferred size.
               </p>
             </div>
@@ -897,26 +838,21 @@ export default function ShopHomePage() {
             <form
               role="search"
               onSubmit={(event) => event.preventDefault()}
-              className="flex h-11 w-full items-center rounded-xl border border-[#e0e8f4] bg-white p-1 sm:max-w-[300px]"
+              className="flex h-11 w-full items-center rounded-xl border border-[#54ACBF]/30 bg-white p-1 sm:max-w-[300px]"
             >
-              <label
-                className="sr-only"
-                htmlFor="product-search"
-              >
+              <label className="sr-only" htmlFor="product-search">
                 Search products
               </label>
-
               <input
                 id="product-search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search rice variety or size..."
-                className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-slate-400"
+                className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm text-[#011C40] outline-none placeholder:text-[#26658C]/60"
               />
-
               <button
                 type="submit"
-                className="h-full rounded-[10px] bg-[#2863ee] px-4 text-sm font-bold text-white transition hover:bg-[#174fcf]"
+                className="h-full rounded-[10px] bg-[#023859] px-4 text-sm font-bold text-white transition hover:bg-[#011C40]"
               >
                 Search
               </button>
@@ -937,8 +873,8 @@ export default function ShopHomePage() {
                 aria-pressed={activeCategory === category}
                 className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition ${
                   activeCategory === category
-                    ? "border-[#2863ee] bg-[#2863ee] text-white shadow-sm"
-                    : "border-[#e0e8f4] bg-white text-slate-600 hover:border-blue-200 hover:text-[#2458d8]"
+                    ? "border-[#023859] bg-[#023859] text-white shadow-sm"
+                    : "border-[#54ACBF]/30 bg-white text-[#26658C] hover:border-[#54ACBF] hover:bg-[#A7EBF2]/20 hover:text-[#011C40]"
                 }`}
               >
                 {index === 0 ? "All products" : category}
@@ -948,7 +884,7 @@ export default function ShopHomePage() {
 
           {/* LOADING / ERROR / PRODUCTS */}
           {loading ? (
-            <div className="rounded-2xl border border-[#e0e8f4] bg-white px-6 py-12 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-[#54ACBF]/25 bg-white px-6 py-12 text-center text-sm text-[#26658C]">
               Loading products from the catalog...
             </div>
           ) : error ? (
@@ -956,15 +892,11 @@ export default function ShopHomePage() {
               <p className="font-bold text-red-800">
                 Could not load products
               </p>
-
-              <p className="mt-1 text-sm text-red-700">
-                {error}
-              </p>
-
+              <p className="mt-1 text-sm text-red-700">{error}</p>
               <button
                 type="button"
                 onClick={loadProducts}
-                className="mt-4 rounded-xl bg-[#2458d8] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1749c4]"
+                className="mt-4 rounded-xl bg-[#023859] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#011C40]"
               >
                 Try again
               </button>
@@ -974,37 +906,34 @@ export default function ShopHomePage() {
               {groupedProducts.map((group) => (
                 <article
                   key={group.key}
-                  className="overflow-hidden rounded-2xl border border-[#e0e8f4] bg-white shadow-[0_3px_14px_rgba(24,56,107,0.04)] transition hover:shadow-md"
+                  className="overflow-hidden rounded-2xl border border-[#54ACBF]/25 bg-white shadow-[0_3px_14px_rgba(1,28,64,0.04)] transition hover:-translate-y-0.5 hover:shadow-md"
                 >
                   <ProductArtwork product={group.imageProduct} />
 
                   <div className="p-5">
                     <div className="mb-4">
                       {group.category && (
-                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#2863ee]">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#26658C]">
                           {group.category}
                         </p>
                       )}
-
-                      <h3 className="mt-1 text-xl font-extrabold tracking-tight">
+                      <h3 className="mt-1 text-xl font-extrabold tracking-tight text-[#011C40]">
                         {group.variety}
                       </h3>
-
                       {group.description && (
-                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                        <p className="mt-1 text-xs leading-5 text-[#26658C]">
                           {group.description}
                         </p>
                       )}
-
-                      <p className="mt-2 text-xs font-medium text-slate-500">
+                      <p className="mt-2 text-xs font-medium text-[#26658C]">
                         {group.items.length} available option
                         {group.items.length !== 1 ? "s" : ""}
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                    <div className="flex items-center justify-between gap-3 border-t border-[#A7EBF2]/60 pt-4">
                       <div>
-                        <p className="text-sm font-extrabold text-[#2458d8]">
+                        <p className="text-sm font-extrabold text-[#023859]">
                           From{" "}
                           {formatCurrency(
                             Math.min(
@@ -1014,7 +943,7 @@ export default function ShopHomePage() {
                             )
                           )}
                         </p>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-[#26658C]">
                           {group.items.length} purchase option
                           {group.items.length === 1 ? "" : "s"}
                         </p>
@@ -1022,7 +951,7 @@ export default function ShopHomePage() {
                       <button
                         type="button"
                         onClick={() => openProductOptions(group)}
-                        className="rounded-xl bg-[#2863ee] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#174fcf]"
+                        className="rounded-xl bg-[#023859] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#011C40]"
                       >
                         Choose options
                       </button>
@@ -1032,12 +961,11 @@ export default function ShopHomePage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-[#cfd9e8] bg-white px-6 py-12 text-center">
-              <p className="font-bold">
+            <div className="rounded-2xl border border-dashed border-[#54ACBF]/40 bg-white px-6 py-12 text-center">
+              <p className="font-bold text-[#011C40]">
                 No rice products found
               </p>
-
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-[#26658C]">
                 {products.length
                   ? "Try another search or choose a different category."
                   : "There are no available products in the catalog right now."}
@@ -1047,183 +975,227 @@ export default function ShopHomePage() {
         </section>
       </div>
 
-      {selectedGroup && selectedProduct && (() => {
-        const stock = getSellableQuantity(selectedProduct);
-        const quantity = Number(
-          quantities[String(selectedProduct.id)] ?? 1
-        );
-        const looseRice = isLooseRice(selectedProduct);
-        const unit = looseRice ? "kg" : "sacks";
-        const outOfStock = stock <= 0;
+      {/* PRODUCT OPTIONS MODAL */}
+      {selectedGroup &&
+        selectedProduct &&
+        (() => {
+          const stock = getSellableQuantity(selectedProduct);
+          const quantity = Number(
+            quantities[String(selectedProduct.id)] ?? 1
+          );
+          const looseRice = isLooseRice(selectedProduct);
+          const unit = looseRice ? "kg" : "sacks";
+          const outOfStock = stock <= 0;
 
-        return (
-          <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-5"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) {
-                setSelectedGroup(null);
-              }
-            }}
-          >
-            <section
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="product-options-title"
-              className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl border border-slate-700 bg-[#111318] p-5 text-white shadow-2xl sm:rounded-2xl sm:p-7"
+          return (
+            <div
+              className="fixed inset-0 z-[100] flex items-end justify-center bg-[#011C40]/60 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) {
+                  setSelectedGroup(null);
+                }
+              }}
             >
-              <div className="flex items-center justify-between gap-3">
-                <h2
-                  id="product-options-title"
-                  className="text-lg font-bold"
-                >
-                  Product: {selectedGroup.variety}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setSelectedGroup(null)}
-                  aria-label="Close product options"
-                  className="rounded-full px-3 py-1 text-2xl leading-none text-slate-400 hover:bg-white/10 hover:text-white"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="mt-4 flex items-center gap-4">
-                <ProductArtwork
-                  product={selectedGroup.imageProduct}
-                  compact
-                />
-                <div>
-                  <h3 className="font-semibold">Available purchase options</h3>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Choose how you want to buy.
-                  </p>
-                </div>
-              </div>
-
-              <div className="my-5 border-t border-white/10" />
-
-              <fieldset>
-                <legend className="mb-3 text-sm font-semibold">
-                  Select rice type
-                </legend>
-                <div className="space-y-2">
-                  {selectedGroup.items.map((product) => {
-                    const optionStock = getSellableQuantity(product);
-                    const selected =
-                      String(product.id) === selectedProductId;
-                    const optionUnit = isLooseRice(product) ? "kg" : "sacks";
-
-                    return (
-                      <label
-                        key={product.id}
-                        className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl px-3 py-2.5 transition ${
-                          selected
-                            ? "bg-white/10"
-                            : "hover:bg-white/[0.06]"
-                        } ${optionStock <= 0 ? "cursor-not-allowed opacity-50" : ""}`}
-                      >
-                        <span className="flex min-w-0 items-center gap-3">
-                          <input
-                            type="radio"
-                            name="rice-type"
-                            value={product.id}
-                            checked={selected}
-                            disabled={optionStock <= 0}
-                            onChange={() =>
-                              setSelectedProductId(String(product.id))
-                            }
-                            className="h-5 w-5 shrink-0 accent-white"
-                          />
-                          <span>
-                            <span className="block text-sm font-medium">
-                              {getSackLabel(product)}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-slate-400">
-                              {optionStock > 0
-                                ? `${formatNumber(optionStock)} ${optionUnit} available`
-                                : "Out of stock"}
-                            </span>
-                          </span>
-                        </span>
-                        <span className="shrink-0 text-right">
-                          <span className="block text-sm font-semibold">
-                            {formatCurrency(product.price)}
-                          </span>
-                          <span className="text-xs text-slate-400">
-                            {getPriceLabel(product)}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </fieldset>
-
-              <div className="mt-5">
-                <p className="mb-2 text-sm font-semibold">
-                  Quantity ({looseRice ? "kg" : `${getSackWeight(selectedProduct)} kg sacks`})
-                </p>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => changeQuantity(selectedProduct, -1)}
-                    disabled={quantity <= 1 || outOfStock}
-                    aria-label="Decrease quantity"
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-xl text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    −
-                  </button>
-                  <span
-                    aria-live="polite"
-                    className="min-w-5 text-center text-base font-semibold"
-                  >
-                    {quantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => changeQuantity(selectedProduct, 1)}
-                    disabled={quantity >= stock || outOfStock}
-                    aria-label="Increase quantity"
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-xl text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    +
-                  </button>
-                  <span className="ml-auto text-sm text-slate-400">
-                    {formatCurrency(Number(selectedProduct.price || 0) * quantity)}
-                  </span>
-                </div>
-                {outOfStock && (
-                  <p className="mt-3 text-sm text-red-300">
-                    This option is currently out of stock.
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  handleAddToCart(selectedProduct);
-                  if (stock > 0 && quantity > 0 && quantity <= stock) {
-                    setSelectedGroup(null);
-                  }
-                }}
-                disabled={outOfStock || !Number.isInteger(quantity) || quantity < 1}
-                className="mt-6 w-full rounded-xl bg-[#2863ee] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#174fcf] disabled:cursor-not-allowed disabled:bg-slate-600"
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="product-options-title"
+                className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-[#54ACBF]/30 bg-white text-[#011C40] shadow-2xl sm:rounded-2xl"
               >
-                Add to cart
-              </button>
-            </section>
-          </div>
-        );
-      })()}
+                {/* MODAL HEADER */}
+                <div className="flex items-center justify-between gap-3 border-b border-[#A7EBF2]/60 px-5 py-4 sm:px-6">
+                  <div>
+                    <p className="mb-1 text-[9px] font-extrabold uppercase tracking-[1.5px] text-[#54ACBF]">
+                      Product selection
+                    </p>
+                    <h2
+                      id="product-options-title"
+                      className="text-lg font-bold text-[#011C40]"
+                    >
+                      {selectedGroup.variety}
+                    </h2>
+                    <p className="mt-0.5 text-[11px] text-[#26658C]">
+                      Choose your preferred rice size and quantity.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGroup(null)}
+                    aria-label="Close product options"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#A7EBF2]/30 text-xl text-[#26658C] transition hover:bg-red-50 hover:text-red-600"
+                  >
+                    ×
+                  </button>
+                </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
+                {/* MODAL CONTENT */}
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+                  <div className="flex items-center gap-4">
+                    <ProductArtwork
+                      product={selectedGroup.imageProduct}
+                      compact
+                    />
+                    <div>
+                      <h3 className="text-sm font-bold text-[#011C40]">
+                        Available purchase options
+                      </h3>
+                      <p className="mt-1 text-xs text-[#26658C]">
+                        Select how you want to purchase this rice variety.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="my-5 border-t border-[#A7EBF2]/60" />
+
+                  <fieldset>
+                    <legend className="mb-3 text-[11px] font-bold uppercase tracking-wider text-[#023859]">
+                      Select rice type
+                    </legend>
+                    <div className="space-y-2">
+                      {selectedGroup.items.map((product) => {
+                        const optionStock = getSellableQuantity(product);
+                        const selected =
+                          String(product.id) === selectedProductId;
+                        const optionUnit = isLooseRice(product)
+                          ? "kg"
+                          : "sacks";
+
+                        return (
+                          <label
+                            key={product.id}
+                            className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border px-3 py-3 transition ${
+                              selected
+                                ? "border-[#26658C] bg-[#A7EBF2]/20"
+                                : "border-[#54ACBF]/25 bg-white hover:bg-[#A7EBF2]/10"
+                            } ${
+                              optionStock <= 0
+                                ? "cursor-not-allowed opacity-50"
+                                : ""
+                            }`}
+                          >
+                            <span className="flex min-w-0 items-center gap-3">
+                              <input
+                                type="radio"
+                                name="rice-type"
+                                value={product.id}
+                                checked={selected}
+                                disabled={optionStock <= 0}
+                                onChange={() =>
+                                  setSelectedProductId(String(product.id))
+                                }
+                                className="h-4 w-4 shrink-0 accent-[#023859]"
+                              />
+                              <span>
+                                <span className="block text-sm font-semibold text-[#011C40]">
+                                  {getSackLabel(product)}
+                                </span>
+                                <span className="mt-0.5 block text-[11px] text-[#26658C]">
+                                  {optionStock > 0
+                                    ? `${formatNumber(optionStock)} ${optionUnit} available`
+                                    : "Out of stock"}
+                                </span>
+                              </span>
+                            </span>
+                            <span className="shrink-0 text-right">
+                              <span className="block text-sm font-bold text-[#023859]">
+                                {formatCurrency(product.price)}
+                              </span>
+                              <span className="text-[10px] text-[#26658C]">
+                                {getPriceLabel(product)}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+
+                  <div className="mt-5">
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[#023859]">
+                      Quantity (
+                      {looseRice
+                        ? "kg"
+                        : `${getSackWeight(selectedProduct)} kg sacks`}
+                      )
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => changeQuantity(selectedProduct, -1)}
+                        disabled={quantity <= 1 || outOfStock}
+                        aria-label="Decrease quantity"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#54ACBF]/35 text-xl text-[#023859] transition hover:bg-[#A7EBF2]/30 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        −
+                      </button>
+                      <span
+                        aria-live="polite"
+                        className="min-w-6 text-center text-base font-bold text-[#011C40]"
+                      >
+                        {quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => changeQuantity(selectedProduct, 1)}
+                        disabled={quantity >= stock || outOfStock}
+                        aria-label="Increase quantity"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#54ACBF]/35 text-xl text-[#023859] transition hover:bg-[#A7EBF2]/30 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                      <span className="ml-auto text-sm font-extrabold text-[#023859]">
+                        {formatCurrency(
+                          Number(selectedProduct.price || 0) * quantity
+                        )}
+                      </span>
+                    </div>
+
+                    {outOfStock && (
+                      <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                        This option is currently out of stock.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* MODAL FOOTER */}
+                <div className="border-t border-[#A7EBF2]/60 bg-white px-5 py-4 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAddToCart(selectedProduct);
+
+                      if (
+                        stock > 0 &&
+                        Number.isInteger(quantity) &&
+                        quantity > 0 &&
+                        quantity <= stock
+                      ) {
+                        setSelectedGroup(null);
+                      }
+                    }}
+                    disabled={
+                      outOfStock ||
+                      !Number.isInteger(quantity) ||
+                      quantity < 1
+                    }
+                    className="w-full rounded-xl bg-[#023859] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#011C40] disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    Add to cart
+                  </button>
+                </div>
+              </section>
+            </div>
+          );
+        })()}
+
+      {/* MOBILE FLOATING BOTTOM NAVIGATION */}
       <nav
         aria-label="Mobile customer navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e0e8f4] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_18px_rgba(24,56,107,0.07)] backdrop-blur lg:hidden"
+        className="fixed inset-x-3 bottom-3 z-40 rounded-2xl border border-[#54ACBF]/30 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_8px_30px_rgba(1,28,64,0.16)] backdrop-blur lg:hidden"
       >
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-4 gap-1">
           {navigation.map((item) => {
             const active = item.label === "Shop";
 
@@ -1232,24 +1204,28 @@ export default function ShopHomePage() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex min-h-[65px] flex-col items-center justify-center gap-1 text-[10px] font-bold transition ${
+                className={`relative flex min-h-[65px] flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold transition-all duration-200 ${
                   active
-                    ? "text-[#2458d8]"
-                    : "text-slate-400 hover:text-[#2458d8]"
+                    ? "bg-[#023859] text-white shadow-sm"
+                    : "text-[#26658C] hover:bg-[#A7EBF2]/25"
                 }`}
               >
-                <NavIcon name={item.icon} className="h-5 w-5" />
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
+                    active
+                      ? "bg-[#A7EBF2]/20 text-[#A7EBF2]"
+                      : "text-[#26658C]"
+                  }`}
+                >
+                  <NavIcon name={item.icon} className="h-5 w-5" />
+                </span>
 
                 <span>{item.label}</span>
 
                 {item.label === "Cart" && cartCount > 0 && (
-                  <span className="absolute right-1/4 top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#2863ee] px-1 text-[9px] font-extrabold text-white">
+                  <span className="absolute right-2 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#54ACBF] px-1 text-[9px] font-extrabold text-white">
                     {cartCount}
                   </span>
-                )}
-
-                {active && (
-                  <span className="absolute bottom-[3px] h-1 w-5 rounded-full bg-[#2863ee]" />
                 )}
               </Link>
             );
